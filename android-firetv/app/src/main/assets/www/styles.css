@@ -69,19 +69,26 @@ img:not([src]) {
 }
 
 /* ==========================================================================
-   Ultra-Fast Apple TV Focus State (60 FPS on Fire TV Stick)
+   Ultra-Fast Apple TV Focus State (Zero Box-Shadow Blur for 60 FPS on Fire TV)
    ========================================================================== */
 [data-focusable="true"] {
   outline: none;
-  transition: transform 0.1s ease-out, border-color 0.1s ease-out, background-color 0.1s ease-out;
 }
 
 [data-focusable="true"].tv-focused,
 [data-focusable="true"]:focus {
-  transform: scale(1.03);
-  border-color: var(--border-focus) !important;
-  box-shadow: 0 0 0 2.5px #ffffff, 0 8px 20px rgba(0, 0, 0, 0.7) !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 2px #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.16);
   z-index: 10;
+}
+
+.btn-primary-tv.tv-focused,
+.btn-tv-white.tv-focused,
+.osd-btn-primary.tv-focused {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 3px #0a84ff !important;
 }
 
 /* ==========================================================================
@@ -697,6 +704,156 @@ img:not([src]) {
   border: 1.5px solid var(--border-subtle);
   color: var(--text-primary);
   font-size: 13px;
+}
+
+/* ==========================================================================
+   LIVE TV EPG BAR & MINI PLAYER (PiP)
+   ========================================================================== */
+.live-epg-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-md);
+  background: #101420;
+  border: 1px solid var(--border-subtle);
+}
+
+.epg-info-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.epg-channel-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.epg-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  margin-right: 8px;
+  border-radius: 5px;
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.epg-programs-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.epg-prog-item {
+  display: flex;
+  align-items: center;
+  margin-right: 22px;
+  font-size: 12px;
+}
+
+.epg-prog-label {
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.epg-prog-title {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.pip-controls-box {
+  display: flex;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.pip-controls-box > button + button {
+  margin-left: 8px;
+}
+
+/* Web Mini Player Mode */
+.player-overlay.mini-pip-mode {
+  top: auto !important;
+  left: auto !important;
+  right: 28px !important;
+  bottom: 24px !important;
+  width: 320px !important;
+  height: 180px !important;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+  z-index: 90;
+  pointer-events: auto;
+}
+
+.player-overlay.mini-pip-mode .video-element {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.player-overlay.mini-pip-mode .player-osd {
+  display: none !important;
+}
+
+/* Live Channel Quick Drawer inside Player OSD */
+.osd-channel-drawer {
+  width: 360px;
+  max-height: 52vh;
+  background: rgba(16, 19, 28, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.osd-drawer-header {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 14px;
+}
+
+.osd-drawer-epg {
+  font-size: 11px;
+  color: #64d2ff;
+  margin-top: 3px;
+}
+
+.osd-drawer-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.osd-drawer-item {
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.osd-drawer-item.active {
+  background: rgba(10, 132, 255, 0.28);
+  border-color: var(--accent-blue);
 }
 
 /* ==========================================================================

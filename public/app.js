@@ -1,5 +1,5 @@
 /* ==========================================================================
-    Apple TV (tvOS) IPTV Player Engine — Fire TV Stick 4K & Web
+   KS TV-Stream — Apple TV (tvOS) IPTV Player Engine (Fire TV Stick 4K & Web)
    ========================================================================== */
 
 (function () {
@@ -12,12 +12,12 @@
   };
 
   const PAGE_SIZE = 36;
-  const OSD_AUTOHIDE_MS = 4000;
+  const OSD_AUTOHIDE_MS = 4500;
 
   const state = {
     loginMode: 'xtream', // 'xtream' | 'core' | 'm3u'
-    coreHost: '',
-    session: null,       // { mode, name, server, username, password, m3uUrl, userInfo, serverInfo }
+    m3uFormatType: 'm3u_plus',
+    session: null,
     activeSection: 'home',
 
     // Categories
@@ -30,12 +30,14 @@
     activeVodCatId: null,
     activeSeriesCatId: null,
 
-    // In-memory stream caches by categoryId
+    // In-memory stream & EPG caches
     liveByCat: new Map(),
     vodByCat: new Map(),
     seriesByCat: new Map(),
     vodInfoCache: new Map(),
     seriesInfoCache: new Map(),
+    epgCache: new Map(),
+    epgDebounceTimer: null,
 
     // Current rendered lists & pagination limits
     currentLiveList: [],
@@ -56,15 +58,16 @@
     modal: {
       active: false,
       item: null,
-      type: null, // 'movie' | 'series'
+      type: null,
       seriesInfo: null,
       activeSeason: null,
       previousFocus: null
     },
 
-    // Video Player State
+    // Video Player & Mini Player (PiP) State
     player: {
       active: false,
+      miniPipActive: false,
       osdVisible: false,
       osdTimer: null,
       type: 'live', // 'live' | 'movie' | 'series'
@@ -74,17 +77,13 @@
       episodeList: [],
       episodeIndex: -1,
       isPlaying: false,
-      aspectMode: 'contain', // 'contain' | 'cover' | 'fill'
+      aspectMode: 'contain',
       hls: null,
-      usingNativeExo: false,
-      nativeProgressInterval: null,
       previousFocus: null
     }
   };
 
-  // DOM Elements cache
   const dom = {
-    ambientImage: document.getElementById('ambient-image'),
     loginScreen: document.getElementById('login-screen'),
     appScreen: document.getElementById('app-screen'),
     loginForm: document.getElementById('login-form'),
@@ -106,12 +105,18 @@
     btnHeroLive: document.getElementById('btn-hero-live'),
     homeRows: document.getElementById('home-rows'),
 
-    // Live TV
+    // Live TV & EPG & Mini Player controls
     liveCatCount: document.getElementById('live-cat-count'),
     liveCategoriesList: document.getElementById('live-categories-list'),
     liveCurrentCatTitle: document.getElementById('live-current-cat-title'),
     liveCurrentCatSub: document.getElementById('live-current-cat-sub'),
     liveFilterInput: document.getElementById('live-filter-input'),
+    epgChannelTitle: document.getElementById('epg-channel-title'),
+    epgNowText: document.getElementById('epg-now-text'),
+    epgNextText: document.getElementById('epg-next-text'),
+    pipControlsBox: document.getElementById('pip-controls-box'),
+    btnPipExpand: document.getElementById('btn-pip-expand'),
+    btnPipStop: document.getElementById('btn-pip-stop'),
     liveChannelsGrid: document.getElementById('live-channels-grid'),
     liveLoadMoreWrap: document.getElementById('live-load-more-wrap'),
     btnLiveLoadMore: document.getElementById('btn-live-load-more'),
@@ -184,6 +189,9 @@
     playerOsd: document.getElementById('player-osd'),
     osdLiveBadge: document.getElementById('osd-live-badge'),
     osdCategoryPill: document.getElementById('osd-category-pill'),
+    osdChannelDrawer: document.getElementById('osd-channel-drawer'),
+    osdDrawerEpg: document.getElementById('osd-drawer-epg'),
+    osdDrawerList: document.getElementById('osd-drawer-list'),
     osdLogo: document.getElementById('osd-logo'),
     osdTitle: document.getElementById('osd-title'),
     osdSubtitle: document.getElementById('osd-subtitle'),
@@ -239,7 +247,6 @@
     try {
       const u = new URL(m3uUrl.trim());
       const server = `${u.protocol}//${u.host}`;
-      // Format 1: /playlist/{user}/{pass}/...
       const pathMatch = u.pathname.match(/\/playlist\/([^\/]+)\/([^\/]+)/i);
       if (pathMatch) {
         return {
@@ -248,7 +255,6 @@
           password: decodeURIComponent(pathMatch[2])
         };
       }
-      // Format 2: /get.php?username=...&password=...
       const userParam = u.searchParams.get('username');
       const passParam = u.searchParams.get('password');
       if (userParam && passParam) {
@@ -260,6 +266,20 @@
       }
     } catch (_) {}
     return null;
+  }
+
+  function decodeBase64Utf8(str) {
+    if (!str) return '';
+    try {
+      const binString = atob(str);
+      const bytes = new Uint8Array(binString.length);
+      for (let i = 0; i < binString.length; i++) {
+        bytes[i] = binString.charCodeAt(i);
+      }
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch (_) {
+      return str;
+    }
   }
 
   function formatTime(sec) {
@@ -282,13 +302,8 @@
     });
   }
 
-  function setAmbientBackdrop(imgUrl) {
-    if (!imgUrl) return;
-    dom.ambientImage.style.backgroundImage = `url("${imgUrl}")`;
-  }
-
   /* ========================================================================
-     NETWORK LAYER (Supports Node Proxy, Direct CORS, and Android APK Bridge)
+     NETWORK LAYER
      ======================================================================== */
   const isLocalServer = window.location.protocol.startsWith('http') && !window.AndroidBridge;
 
@@ -296,7 +311,6 @@
     const { server, username, password } = state.session;
     const baseApi = `${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}${actionParams ? '&' + actionParams : ''}`;
 
-    // 1. If running in Native Android APK with AndroidBridge.httpGet
     if (window.AndroidBridge && typeof window.AndroidBridge.httpGet === 'function') {
       const raw = window.AndroidBridge.httpGet(baseApi);
       if (raw && !raw.startsWith('__ERROR__:')) {
@@ -304,7 +318,6 @@
       }
     }
 
-    // 2. If running on our Node.js server, use cached /api/xtream proxy first
     if (isLocalServer) {
       const proxyUrl = `/api/xtream?url=${encodeURIComponent(baseApi)}${noCache ? '&nocache=1' : ''}`;
       const res = await fetch(proxyUrl);
@@ -312,22 +325,12 @@
       return await res.json();
     }
 
-    // 3. Direct fetch when CORS is enabled on the IPTV server
     const res = await fetch(baseApi);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   }
 
   async function resolveStreamRedirect(rawStreamUrl) {
-    // 1. Native Android APK bridge
-    if (window.AndroidBridge && typeof window.AndroidBridge.resolveUrl === 'function') {
-      try {
-        const resolved = window.AndroidBridge.resolveUrl(rawStreamUrl);
-        if (resolved && resolved.startsWith('http')) return resolved;
-      } catch (_) {}
-    }
-
-    // 2. Local Node server /api/resolve
     if (isLocalServer) {
       try {
         const res = await fetch(`/api/resolve?url=${encodeURIComponent(rawStreamUrl)}`);
@@ -337,7 +340,6 @@
         }
       } catch (_) {}
     }
-
     return rawStreamUrl;
   }
 
@@ -361,10 +363,86 @@
   }
 
   /* ========================================================================
-     1. LOGIN FLOW (3 Modes from PDF)
+     EPG (GUIA DE PROGRAMAÇÃO) ENGINE
+     ======================================================================== */
+  function requestChannelEpg(channel) {
+    if (!channel || !channel.stream_id) return;
+    dom.epgChannelTitle.textContent = channel.name || 'Canal ao Vivo';
+
+    const sid = String(channel.stream_id);
+    if (state.epgCache.has(sid)) {
+      applyEpgDisplay(state.epgCache.get(sid), sid);
+      return;
+    }
+
+    dom.epgNowText.textContent = 'Consultando programação...';
+    dom.epgNextText.textContent = '--';
+
+    if (state.epgDebounceTimer) clearTimeout(state.epgDebounceTimer);
+    state.epgDebounceTimer = setTimeout(async () => {
+      try {
+        const data = await fetchXtreamJson(`action=get_short_epg&stream_id=${encodeURIComponent(sid)}&limit=4`);
+        const listings = (data && Array.isArray(data.epg_listings)) ? data.epg_listings : [];
+        const parsed = listings.map(item => {
+          const title = decodeBase64Utf8(item.title || '');
+          const startStr = (item.start || '').split(' ')[1] ? (item.start || '').split(' ')[1].slice(0, 5) : '';
+          const endStr = (item.end || '').split(' ')[1] ? (item.end || '').split(' ')[1].slice(0, 5) : '';
+          const timeRange = (startStr && endStr) ? `(${startStr} - ${endStr}) ` : '';
+          return `${timeRange}${title}`.trim();
+        }).filter(Boolean);
+
+        const result = {
+          now: parsed[0] || 'Transmissão ao Vivo',
+          next: parsed[1] || 'Programação contínua'
+        };
+        state.epgCache.set(sid, result);
+        applyEpgDisplay(result, sid);
+      } catch (_) {
+        const fallback = { now: 'Transmissão ao Vivo', next: 'Programação contínua' };
+        state.epgCache.set(sid, fallback);
+        applyEpgDisplay(fallback, sid);
+      }
+    }, 220);
+  }
+
+  function applyEpgDisplay(epgObj, channelStreamId) {
+    dom.epgNowText.textContent = epgObj.now || 'Transmissão ao Vivo';
+    dom.epgNextText.textContent = epgObj.next || '--';
+    const epgLine = `AGORA: ${epgObj.now || 'Transmissão ao Vivo'}${epgObj.next ? '  •  A SEGUIR: ' + epgObj.next : ''}`;
+    if (dom.osdDrawerEpg) {
+      dom.osdDrawerEpg.textContent = epgLine;
+    }
+    if (
+      state.player.type === 'live' &&
+      state.player.currentItem &&
+      (!channelStreamId || String(state.player.currentItem.stream_id) === String(channelStreamId))
+    ) {
+      dom.osdSubtitle.textContent = epgLine;
+      if (window.AndroidBridge && typeof window.AndroidBridge.updateLiveSubtitle === 'function') {
+        try { window.AndroidBridge.updateLiveSubtitle(epgLine); } catch (_) {}
+      }
+    }
+  }
+
+  /* ========================================================================
+     1. LOGIN FLOW
      ======================================================================== */
   function setupLoginEvents() {
-    // Switch Login Tabs
+    const saved = loadJson(STORAGE_KEYS.SESSION, null);
+    if (saved && saved.server && saved.username) {
+      document.getElementById('xtream-name').value = saved.name || 'KS TV-Stream';
+      document.getElementById('xtream-server').value = saved.server || '';
+      document.getElementById('xtream-user').value = saved.username || '';
+      document.getElementById('xtream-pass').value = saved.password || '';
+      const coreSrv = document.getElementById('core-server');
+      if (coreSrv) coreSrv.value = saved.server || '';
+      document.getElementById('core-user').value = saved.username || '';
+      document.getElementById('core-pass').value = saved.password || '';
+      if (saved.m3uUrl) {
+        document.getElementById('m3u-url').value = saved.m3uUrl;
+      }
+    }
+
     document.querySelectorAll('.login-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         const mode = tab.dataset.loginMode;
@@ -377,23 +455,13 @@
       });
     });
 
-    // Core Host Preset Pills
-    document.querySelectorAll('[data-core-host]').forEach(btn => {
+    document.querySelectorAll('[data-m3u-type]').forEach(btn => {
       btn.addEventListener('click', () => {
-        state.coreHost = btn.dataset.coreHost;
-        document.querySelectorAll('[data-core-host]').forEach(b => b.classList.toggle('active', b === btn));
+        state.m3uFormatType = btn.dataset.m3uType;
+        document.querySelectorAll('[data-m3u-type]').forEach(b => b.classList.toggle('active', b === btn));
       });
     });
 
-    // M3U Preset Pills
-    document.querySelectorAll('[data-m3u-preset]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('m3u-url').value = btn.dataset.m3uPreset;
-        document.querySelectorAll('[data-m3u-preset]').forEach(b => b.classList.toggle('active', b === btn));
-      });
-    });
-
-    // Submit Login
     dom.loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       await performLogin();
@@ -417,7 +485,7 @@
         sessionCandidate = { mode: 'xtream', name, server, username, password };
       } else if (state.loginMode === 'core') {
         const coreSrvInput = document.getElementById('core-server');
-        const server = normalizeServerUrl(coreSrvInput ? coreSrvInput.value : state.coreHost);
+        const server = normalizeServerUrl(coreSrvInput ? coreSrvInput.value : '');
         const username = document.getElementById('core-user').value.trim();
         const password = document.getElementById('core-pass').value.trim();
         if (!server || !username || !password) throw new Error('Informe o servidor, usuário e senha.');
@@ -459,7 +527,6 @@
         await loadCustomM3uPlaylist(sessionCandidate.m3uUrl);
       } else {
         const authData = await fetchXtreamJson('', true);
-
         if (!authData || !authData.user_info || Number(authData.user_info.auth) !== 1) {
           throw new Error('Usuário ou senha inválidos, ou assinatura expirada.');
         }
@@ -471,7 +538,6 @@
         await initializeCatalog();
       }
 
-      // Switch to App Screen
       dom.loginScreen.classList.remove('active');
       dom.appScreen.classList.add('active');
       populateAccountSection();
@@ -507,10 +573,9 @@
   }
 
   /* ========================================================================
-     2. INITIALIZE CATALOG (Ultra-Light Category Loading)
+     2. INITIALIZE CATALOG
      ======================================================================== */
   async function initializeCatalog() {
-    // Load the 3 category lists in parallel (tiny payload, ~10KB total)
     const [liveCats, vodCats, seriesCats] = await Promise.all([
       fetchXtreamJson('action=get_live_categories').catch(() => []),
       fetchXtreamJson('action=get_vod_categories').catch(() => []),
@@ -529,7 +594,6 @@
     renderCategorySidebar('movies', state.vodCategories);
     renderCategorySidebar('series', state.seriesCategories);
 
-    // Pick smart initial categories (avoid "Suporte" as first live category if sports/globo exists)
     const firstLiveCat = state.liveCategories.find(c => !/suporte/i.test(c.category_name)) || state.liveCategories[0];
     const firstVodCat = state.vodCategories[0];
     const firstSeriesCat = state.seriesCategories[0];
@@ -582,8 +646,11 @@
 
       state.currentLiveList = state.liveByCat.get(String(categoryId)) || [];
       state.liveRenderLimit = PAGE_SIZE;
-      dom.liveCurrentCatSub.textContent = `${state.currentLiveList.length} canais disponíveis • Aperte OK para assistir`;
+      dom.liveCurrentCatSub.textContent = `${state.currentLiveList.length} canais • Aperte OK no vídeo para Lista de Canais e VOLTAR para Mini Player`;
       renderLiveChannels();
+      if (state.currentLiveList[0]) {
+        requestChannelEpg(state.currentLiveList[0]);
+      }
       if (focusFirst) {
         const firstCard = dom.liveChannelsGrid.querySelector('.channel-card');
         if (firstCard) setTvFocus(firstCard);
@@ -640,7 +707,7 @@
   }
 
   /* ========================================================================
-     3. RENDERING CARDS (Channels, Movies, Series, Home Shelves)
+     3. RENDERING CARDS
      ======================================================================== */
   function createChannelCard(channel, index, channelListContext) {
     const btn = document.createElement('button');
@@ -690,6 +757,12 @@
 
     btn.appendChild(logoBox);
     btn.appendChild(meta);
+
+    btn.addEventListener('focus', () => {
+      if (state.activeSection === 'live') {
+        requestChannelEpg(channel);
+      }
+    });
 
     btn.addEventListener('click', () => {
       startPlayback({
@@ -817,7 +890,6 @@
     const series = state.currentSeriesList || [];
     const channels = state.currentLiveList || [];
 
-    // Hero Banner Item
     const heroCandidate = movies[0] || series[0] || channels[0];
     if (heroCandidate) {
       state.heroItem = {
@@ -831,37 +903,28 @@
         '';
       if (cover) {
         dom.heroBackdropImg.src = cover;
-        setAmbientBackdrop(cover);
       }
       dom.heroBadgeType.textContent = state.heroItem.type === 'movie' ? 'KS TV-Stream • Filme em Alta' : 'KS TV-Stream • Destaque';
       dom.heroBadgeMeta.textContent = heroCandidate.year ? `${heroCandidate.year} • 4K HDR` : 'Alta Definição';
-      dom.heroTitle.textContent = heroCandidate.name || heroCandidate.title || 'Destaque Core Play';
+      dom.heroTitle.textContent = heroCandidate.name || heroCandidate.title || 'Destaque KS TV-Stream';
       dom.heroDesc.textContent =
         heroCandidate.plot ||
         'Assista agora com reprodução limpa em tela cheia. No player, pressione VOLTAR uma vez para ocultar os controles.';
     }
 
-    // Build Horizontal Shelves
     dom.homeRows.innerHTML = '';
 
-    // 1. Continue Watching / Recent
     if (state.recent.length > 0) {
       appendHomeShelf('Continuar Assistindo', state.recent.slice(0, 12), 'mixed');
     }
-
-    // 2. Featured Live Channels
     if (channels.length > 0) {
-      appendHomeShelf('TV ao Vivo — Destaques de Hoje', channels.slice(0, 16), 'live');
+      appendHomeShelf('TV ao Vivo — Destaques de Hoje', channels.slice(0, 14), 'live');
     }
-
-    // 3. Popular Movies
     if (movies.length > 0) {
-      appendHomeShelf('Filmes Mais Assistidos', movies.slice(0, 18), 'movie');
+      appendHomeShelf('Filmes Mais Assistidos', movies.slice(0, 14), 'movie');
     }
-
-    // 4. Popular Series
     if (series.length > 0) {
-      appendHomeShelf('Séries em Alta', series.slice(0, 18), 'series');
+      appendHomeShelf('Séries em Alta', series.slice(0, 14), 'series');
     }
   }
 
@@ -919,7 +982,6 @@
       dom.btnDetailsPlay.classList.remove('hidden');
       setTvFocus(dom.btnDetailsPlay);
 
-      // Fetch rich VOD info
       const vodId = item.stream_id;
       if (vodId) {
         let info = state.vodInfoCache.get(String(vodId));
@@ -1050,56 +1112,66 @@
   }
 
   /* ========================================================================
-     5. CLEAR VIDEO PLAYER ENGINE (Live TV, Movies, Series)
-     - Supports both Native Android ExoPlayer (in APK) and HTML5/HLS.js (Web)
-     - Strict Back Button Rule:
-       * 1st Back press when OSD is visible -> Hides OSD (leaves video 100% CLEAR)
-       * 2nd Back press when OSD is hidden -> Exits video player
+     5. VIDEO PLAYER, LIVE CHANNEL DRAWER & MINI PLAYER (PiP)
      ======================================================================== */
   async function startPlayback({ type, item, channelList = [], channelIndex = -1, episodeList = [], episodeIndex = -1, triggerElement = null }) {
     if (triggerElement) {
       state.player.previousFocus = triggerElement;
     }
 
-    // Save to Recent / Continue Watching
     addToRecent(item, type);
 
     const isLive = type === 'live';
     const titleText = item.name || item.title || 'Reproduzindo';
+    const epgEntry = isLive && item.stream_id ? state.epgCache.get(String(item.stream_id)) : null;
     const subtitleText = isLive
-      ? `Canal ${item.num || (channelIndex + 1)} • Ao Vivo`
+      ? (epgEntry && epgEntry.now ? `AGORA: ${epgEntry.now}` : `Canal ${item.num || (channelIndex + 1)} • Ao Vivo`)
       : item.year ? `${item.year} • Cinema` : 'Reprodução Limpa';
 
     const rawUrl = buildStreamUrl(item, type);
 
-    // 1. NATIVE FIRE TV STICK 4K PLAYER (100% Native SurfaceView + Native Apple TV OSD)
-    if (window.AndroidBridge && typeof window.AndroidBridge.openNativePlayer === 'function') {
-      state.player.active = false;
-      state.player.currentItem = item;
-      state.player.type = type;
-      state.player.channelList = channelList;
-      state.player.channelIndex = channelIndex;
-      state.player.episodeList = episodeList;
-      state.player.episodeIndex = episodeIndex;
-      window.AndroidBridge.openNativePlayer(rawUrl, titleText, subtitleText, isLive);
-      return;
-    }
-
-    state.player.active = true;
     state.player.type = type;
     state.player.currentItem = item;
     state.player.channelList = channelList;
     state.player.channelIndex = channelIndex;
     state.player.episodeList = episodeList;
     state.player.episodeIndex = episodeIndex;
+    state.player.miniPipActive = false;
+    dom.pipControlsBox.classList.add('hidden');
 
-    // Show overlay & spinner
-    dom.playerOverlay.classList.remove('hidden');
+    if (isLive) {
+      requestChannelEpg(item);
+    }
+
+    // 1. NATIVE FIRE TV STICK 4K PLAYER (With Native Channel List on OK + Native Mini Player on Back!)
+    if (window.AndroidBridge && typeof window.AndroidBridge.openNativePlayer === 'function') {
+      state.player.active = false;
+      if (isLive && typeof window.AndroidBridge.setLiveChannelList === 'function') {
+        const compactList = (channelList || []).slice(0, 120).map((ch, idx) => {
+          const cachedEpg = ch.stream_id ? state.epgCache.get(String(ch.stream_id)) : null;
+          return {
+            idx,
+            num: ch.num || idx + 1,
+            name: ch.name || 'Canal',
+            epg: cachedEpg && cachedEpg.now ? cachedEpg.now : '',
+            id: ch.stream_id
+          };
+        });
+        try {
+          window.AndroidBridge.setLiveChannelList(JSON.stringify(compactList), channelIndex);
+        } catch (_) {}
+      }
+      window.AndroidBridge.openNativePlayer(rawUrl, titleText, subtitleText, isLive);
+      return;
+    }
+
+    // 2. WEB APP PLAYER
+    state.player.active = true;
+    dom.playerOverlay.classList.remove('hidden', 'mini-pip-mode');
     dom.playerErrorBox.classList.add('hidden');
     dom.playerSpinner.classList.remove('hidden');
     dom.playerLoadingText.textContent = 'Conectando ao sinal...';
 
-    // Update OSD metadata
     dom.osdLiveBadge.classList.toggle('hidden', !isLive);
     dom.osdCategoryPill.textContent =
       isLive ? 'TV ao Vivo' : type === 'movie' ? 'Filme • Cinema' : 'Série';
@@ -1115,7 +1187,6 @@
     dom.osdTitle.textContent = titleText;
     dom.osdSubtitle.textContent = subtitleText;
 
-    // Toggle Live vs VOD controls in OSD
     dom.btnOsdPrevCh.classList.toggle('hidden', !isLive);
     dom.btnOsdNextCh.classList.toggle('hidden', !isLive);
     dom.btnOsdRw.classList.toggle('hidden', isLive);
@@ -1127,31 +1198,20 @@
       !(type === 'series' && episodeIndex >= 0 && episodeIndex + 1 < episodeList.length)
     );
 
-    updateOsdFavButton();
+    if (isLive) {
+      renderWebChannelDrawer();
+      dom.osdChannelDrawer.classList.remove('hidden');
+    } else {
+      dom.osdChannelDrawer.classList.add('hidden');
+    }
 
-    // Show OSD briefly at start, then auto-hide to leave screen 100% CLEAR
+    updateOsdFavButton();
     showPlayerOsd(true);
     pushBackState('player');
 
-    // Stop any previous stream
     stopMediaEngines();
 
     const finalUrl = await resolveStreamRedirect(rawUrl);
-
-    // Check if running inside our Fire TV Native APK with Hardware ExoPlayer Bridge
-    if (window.AndroidBridge && typeof window.AndroidBridge.playStream === 'function') {
-      state.player.usingNativeExo = true;
-      document.body.classList.add('native-video-active');
-      window.AndroidBridge.playStream(finalUrl, rawUrl, isLive);
-      state.player.isPlaying = true;
-      updatePlayPauseLabel(true);
-      startNativeProgressPoller();
-      return;
-    }
-
-    // Web App Playback (HTML5 Video + HLS.js)
-    state.player.usingNativeExo = false;
-    document.body.classList.remove('native-video-active');
     const video = dom.videoElement;
 
     if (isLive && window.Hls && window.Hls.isSupported()) {
@@ -1188,11 +1248,34 @@
     }
   }
 
+  function renderWebChannelDrawer() {
+    if (!dom.osdDrawerList) return;
+    dom.osdDrawerList.innerHTML = '';
+    const list = (state.player.channelList || []).slice(0, 80);
+    const frag = document.createDocumentFragment();
+
+    list.forEach((ch, idx) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'osd-drawer-item' + (idx === state.player.channelIndex ? ' active' : '');
+      btn.dataset.focusable = 'true';
+      btn.textContent = `${ch.num || idx + 1}. ${ch.name || 'Canal'}`;
+      btn.addEventListener('click', () => {
+        startPlayback({
+          type: 'live',
+          item: ch,
+          channelList: state.player.channelList,
+          channelIndex: idx,
+          triggerElement: state.player.previousFocus
+        });
+      });
+      frag.appendChild(btn);
+    });
+
+    dom.osdDrawerList.appendChild(frag);
+  }
+
   function stopMediaEngines() {
-    if (state.player.nativeProgressInterval) {
-      clearInterval(state.player.nativeProgressInterval);
-      state.player.nativeProgressInterval = null;
-    }
     if (window.AndroidBridge && typeof window.AndroidBridge.stopStream === 'function') {
       try { window.AndroidBridge.stopStream(); } catch (_) {}
     }
@@ -1212,6 +1295,14 @@
     dom.playerOsd.classList.remove('osd-hidden');
 
     if (focusPrimary) {
+      if (state.player.type === 'live' && dom.osdDrawerList) {
+        const activeChBtn = dom.osdDrawerList.querySelector('.osd-drawer-item.active') || dom.osdDrawerList.querySelector('.osd-drawer-item');
+        if (activeChBtn) {
+          setTvFocus(activeChBtn);
+          resetOsdAutoHideTimer();
+          return;
+        }
+      }
       setTvFocus(dom.btnOsdPlayPause);
     }
 
@@ -1238,14 +1329,40 @@
     }, OSD_AUTOHIDE_MS);
   }
 
+  function enterWebMiniPipMode() {
+    hidePlayerOsd();
+    state.player.active = false;
+    state.player.miniPipActive = true;
+    dom.playerOverlay.classList.add('mini-pip-mode');
+    dom.pipControlsBox.classList.remove('hidden');
+    if (state.player.previousFocus && document.body.contains(state.player.previousFocus)) {
+      setTvFocus(state.player.previousFocus);
+    }
+  }
+
+  function expandMiniPipToFullScreen() {
+    if (window.AndroidBridge && typeof window.AndroidBridge.expandMiniPlayer === 'function') {
+      state.player.miniPipActive = false;
+      dom.pipControlsBox.classList.add('hidden');
+      window.AndroidBridge.expandMiniPlayer();
+      return;
+    }
+    if (!state.player.miniPipActive) return;
+    state.player.miniPipActive = false;
+    state.player.active = true;
+    dom.pipControlsBox.classList.add('hidden');
+    dom.playerOverlay.classList.remove('mini-pip-mode');
+    showPlayerOsd(true);
+  }
+
   function closePlayer() {
-    if (!state.player.active) return;
     hidePlayerOsd();
     stopMediaEngines();
     state.player.active = false;
-    state.player.usingNativeExo = false;
-    document.body.classList.remove('native-video-active');
+    state.player.miniPipActive = false;
+    dom.pipControlsBox.classList.add('hidden');
     dom.playerOverlay.classList.add('hidden');
+    dom.playerOverlay.classList.remove('mini-pip-mode');
     dom.playerSpinner.classList.add('hidden');
     dom.playerErrorBox.classList.add('hidden');
 
@@ -1256,13 +1373,6 @@
 
   function togglePlayPause() {
     if (!state.player.active) return;
-    if (state.player.usingNativeExo && window.AndroidBridge) {
-      const playing = window.AndroidBridge.togglePlayPause();
-      state.player.isPlaying = Boolean(playing);
-      updatePlayPauseLabel(state.player.isPlaying);
-      resetOsdAutoHideTimer();
-      return;
-    }
     const v = dom.videoElement;
     if (v.paused) {
       v.play().catch(() => {});
@@ -1274,20 +1384,14 @@
 
   function seekRelative(deltaSeconds) {
     if (!state.player.active || state.player.type === 'live') return;
-    if (state.player.usingNativeExo && window.AndroidBridge) {
-      window.AndroidBridge.seekByMs(deltaSeconds * 1000);
-      resetOsdAutoHideTimer();
-      return;
-    }
     const v = dom.videoElement;
-    if (Number.isFinite(v. duration)) {
+    if (Number.isFinite(v.duration)) {
       v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + deltaSeconds));
     }
     resetOsdAutoHideTimer();
   }
 
   function stepChannel(delta) {
-    if (!state.player.active || state.player.type !== 'live') return;
     const list = state.player.channelList;
     if (!list || list.length === 0) return;
     const nextIdx = (state.player.channelIndex + delta + list.length) % list.length;
@@ -1301,7 +1405,7 @@
   }
 
   function playNextEpisode() {
-    if (!state.player.active || state.player.type !== 'series') return;
+    if (state.player.type !== 'series') return;
     const list = state.player.episodeList;
     const nextIdx = state.player.episodeIndex + 1;
     if (!list || nextIdx >= list.length) return;
@@ -1334,15 +1438,11 @@
     dom.videoElement.classList.remove('aspect-cover', 'aspect-fill');
     if (next === 'cover') dom.videoElement.classList.add('aspect-cover');
     if (next === 'fill') dom.videoElement.classList.add('aspect-fill');
-
-    if (state.player.usingNativeExo && window.AndroidBridge && typeof window.AndroidBridge.setAspectMode === 'function') {
-      window.AndroidBridge.setAspectMode(next);
-    }
     resetOsdAutoHideTimer();
   }
 
   function updatePlayPauseLabel(isPlaying) {
-    dom.osdPlayPauseLabel.textContent = isPlaying ? '⏸ Pausar' : '▶ Reproduzir';
+    dom.osdPlayPauseLabel.textContent = isPlaying ? '❚❚ Pausar' : '▶ Reproduzir';
   }
 
   function showPlayerError(msg) {
@@ -1382,29 +1482,25 @@
     });
 
     v.addEventListener('error', () => {
-      if (!state.player.active || state.player.usingNativeExo) return;
+      if (!state.player.active) return;
       showPlayerError('Não foi possível abrir este stream no momento.');
     });
 
-    // Click on progress bar to seek
     dom.osdProgressWrap.addEventListener('click', (e) => {
       if (state.player.type === 'live') return;
       const rect = dom.osdProgressWrap.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      if (state.player.usingNativeExo && window.AndroidBridge) {
-        window.AndroidBridge.seekToPercent(ratio);
-      } else if (Number.isFinite(v.duration)) {
+      if (Number.isFinite(v.duration)) {
         v.currentTime = ratio * v.duration;
       }
       resetOsdAutoHideTimer();
     });
 
-    // OSD Control Button Listeners
     dom.btnOsdPlayPause.addEventListener('click', togglePlayPause);
     dom.btnOsdPrevCh.addEventListener('click', () => stepChannel(-1));
     dom.btnOsdNextCh.addEventListener('click', () => stepChannel(1));
-    dom.btnOsdRw.addEventListener('click', () => seekRelative(-10));
-    dom.btnOsdFf.addEventListener('click', () => seekRelative(10));
+    dom.btnOsdRw.addEventListener('click', () => seekRelative(-15));
+    dom.btnOsdFf.addEventListener('click', () => seekRelative(15));
     dom.btnOsdNextEp.addEventListener('click', playNextEpisode);
     dom.btnOsdFav.addEventListener('click', () => {
       if (state.player.currentItem) {
@@ -1416,6 +1512,14 @@
     dom.btnOsdAspect.addEventListener('click', cycleAspectRatio);
     dom.btnOsdHide.addEventListener('click', hidePlayerOsd);
     dom.btnOsdClose.addEventListener('click', closePlayer);
+
+    dom.btnPipExpand.addEventListener('click', expandMiniPipToFullScreen);
+    dom.btnPipStop.addEventListener('click', () => {
+      if (window.AndroidBridge && typeof window.AndroidBridge.closeMiniPlayer === 'function') {
+        window.AndroidBridge.closeMiniPlayer();
+      }
+      closePlayer();
+    });
 
     dom.btnPlayerRetry.addEventListener('click', () => {
       if (state.player.currentItem) {
@@ -1432,91 +1536,44 @@
     });
     dom.btnPlayerExitErr.addEventListener('click', closePlayer);
 
-    // Clicking or moving mouse on clear video brings up OSD
-    dom.playerOverlay.addEventListener('mousemove', () => {
-      if (state.player.active && !state.player.osdVisible) {
-        showPlayerOsd(false);
-      } else if (state.player.active) {
-        resetOsdAutoHideTimer();
+    dom.playerOverlay.addEventListener('click', (e) => {
+      if (state.player.miniPipActive) {
+        expandMiniPipToFullScreen();
+        return;
       }
-    });
-
-    dom.videoElement.addEventListener('click', () => {
-      if (!state.player.osdVisible) {
-        showPlayerOsd(true);
-      } else {
-        hidePlayerOsd();
+      if (e.target === dom.videoElement) {
+        if (!state.player.osdVisible) {
+          showPlayerOsd(true);
+        } else {
+          hidePlayerOsd();
+        }
       }
     });
   }
 
-  function startNativeProgressPoller() {
-    if (state.player.nativeProgressInterval) clearInterval(state.player.nativeProgressInterval);
-    state.player.nativeProgressInterval = setInterval(() => {
-      if (!state.player.active || !state.player.usingNativeExo || !window.AndroidBridge) return;
-      try {
-        const statusJson = window.AndroidBridge.getPlayerStatus();
-        if (!statusJson) return;
-        const st = JSON.parse(statusJson);
-        if (st.ready) {
-          dom.playerSpinner.classList.add('hidden');
-          state.player.isPlaying = Boolean(st.playing);
-          updatePlayPauseLabel(state.player.isPlaying);
-        }
-        if (st.error) {
-          showPlayerError(st.error);
-        }
-        if (state.player.type !== 'live' && st.durationMs > 0) {
-          const curSec = st.positionMs / 1000;
-          const durSec = st.durationMs / 1000;
-          dom.osdTimeCurrent.textContent = formatTime(curSec);
-          dom.osdTimeTotal.textContent = formatTime(durSec);
-          dom.osdProgressFill.style.width = `${Math.min(100, (curSec / durSec) * 100)}%`;
-        }
-      } catch (_) {}
-    }, 500);
-  }
-
-  // Callback invoked from Native Android ExoPlayer when first frame renders
-  window.onNativePlayerReady = function () {
-    dom.playerSpinner.classList.add('hidden');
-    dom.playerErrorBox.classList.add('hidden');
-  };
-
-  window.onNativePlayerError = function (msg) {
-    showPlayerError(msg || 'Falha ao reproduzir stream.');
-  };
-
+  // Callbacks invoked from Native Android Player
   window.onNativeStepChannel = function (delta) {
+    stepChannel(delta);
+  };
+
+  window.onNativeSelectChannelIndex = function (idx) {
     const list = state.player.channelList;
-    if (!list || list.length === 0) return;
-    const nextIdx = (state.player.channelIndex + delta + list.length) % list.length;
+    if (!list || idx < 0 || idx >= list.length) return;
     startPlayback({
       type: 'live',
-      item: list[nextIdx],
+      item: list[idx],
       channelList: list,
-      channelIndex: nextIdx,
+      channelIndex: idx,
       triggerElement: state.player.previousFocus
     });
   };
 
-  window.onNativeNextEpisode = function () {
-    const list = state.player.episodeList;
-    const nextIdx = state.player.episodeIndex + 1;
-    if (!list || nextIdx >= list.length) return;
-    const ep = list[nextIdx];
-    const seasonKey = state.modal.activeSeason || '1';
-    startPlayback({
-      type: 'series',
-      item: {
-        ...ep,
-        name: `${state.modal.item ? state.modal.item.name : 'Série'} — T${seasonKey}:E${ep.episode_num || nextIdx + 1}`,
-        stream_icon: (ep.info && ep.info.movie_image) || (state.modal.item && state.modal.item.cover)
-      },
-      episodeList: list,
-      episodeIndex: nextIdx,
-      triggerElement: state.player.previousFocus
-    });
+  window.onNativeMiniPlayerState = function (isActive) {
+    state.player.miniPipActive = Boolean(isActive);
+    dom.pipControlsBox.classList.toggle('hidden', !state.player.miniPipActive);
+    if (state.player.previousFocus && document.body.contains(state.player.previousFocus)) {
+      setTvFocus(state.player.previousFocus);
+    }
   };
 
   /* ========================================================================
@@ -1663,7 +1720,7 @@
   }
 
   /* ========================================================================
-     7. BACK BUTTON & D-PAD REMOTE CONTROL ENGINE (FIRE TV STICK 4K)
+     7. ULTRA-FAST STRUCTURED D-PAD NAVIGATION ENGINE (0ms Lag on Fire TV)
      ======================================================================== */
   function pushBackState(tag) {
     try {
@@ -1671,21 +1728,22 @@
     } catch (_) {}
   }
 
-  /**
-   * Central handler for Fire TV Remote BACK button, Keyboard ESC/Backspace, and Android Bridge.
-   * Returns true if consumed.
-   */
   function handleBackAction() {
-    // 1. If Video Player is open:
+    // 1. If Video Player is open in Full Screen:
     if (state.player.active) {
       if (state.player.osdVisible) {
-        // REQUIREMENT: When pressing Back while player options are on screen,
-        // ONLY hide the player options (leave video playing 100% CLEAR)!
+        // 1st Back press: Hide player options & channel list (leave video 100% CLEAR)!
         hidePlayerOsd();
         pushBackState('player-clear');
         return true;
       } else {
-        // Screen is already clear -> pressing Back exits the video player
+        // 2nd Back press (screen is already clear):
+        // On Live TV -> Shrink to Mini Player (PiP) so stream continues while browsing!
+        if (state.player.type === 'live') {
+          enterWebMiniPipMode();
+          return true;
+        }
+        // On Movies/Series -> Exit player
         closePlayer();
         return true;
       }
@@ -1699,7 +1757,7 @@
 
     // 3. If inside App Screen and focus is not in Top Navigation Bar, move focus up to Top Nav
     if (dom.appScreen.classList.contains('active')) {
-      const activeEl = document.activeElement;
+      const activeEl = document.querySelector('.tv-focused') || document.activeElement;
       if (activeEl && !activeEl.closest('.tvos-nav-pill')) {
         const currentNav = document.querySelector(`.nav-item[data-section="${state.activeSection}"]`) || document.querySelector('.nav-item');
         if (currentNav) {
@@ -1712,10 +1770,8 @@
     return false;
   }
 
-  // Expose to Android Native APK MainActivity.onKeyDown(KEYCODE_BACK)
   window.handleFireTvBack = handleBackAction;
 
-  // Expose direct D-Pad & Media key handler for Fire TV Stick 4K Native APK
   window.handleFireTvKey = function (keyName) {
     if (keyName === 'Back') {
       return handleBackAction() ? 'CONSUMED' : 'IGNORED';
@@ -1727,11 +1783,11 @@
         return 'CONSUMED';
       }
       if (keyName === 'MediaFastForward') {
-        seekRelative(10);
+        seekRelative(15);
         return 'CONSUMED';
       }
       if (keyName === 'MediaRewind') {
-        seekRelative(-10);
+        seekRelative(-15);
         return 'CONSUMED';
       }
 
@@ -1751,8 +1807,7 @@
         return 'CONSUMED';
       }
       if (keyName === 'Enter') {
-        const focused = document.querySelector('.tv-focused') || document.activeElement;
-        if (focused) focused.click();
+        if (focusedEl) focusedEl.click();
         return 'CONSUMED';
       }
       return 'CONSUMED';
@@ -1781,48 +1836,268 @@
     handleBackAction();
   });
 
+  /**
+   * Instantaneous focus + direct container scroll math (avoids slow browser scrollIntoView!)
+   */
   function setTvFocus(el) {
     if (!el) return;
-    document.querySelectorAll('.tv-focused').forEach(node => node.classList.remove('tv-focused'));
+    const prev = document.querySelector('.tv-focused');
+    if (prev && prev !== el) prev.classList.remove('tv-focused');
     el.classList.add('tv-focused');
-    el.focus({ preventScroll: false });
     try {
-      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    } catch (_) {}
-  }
-
-  function getVisibleFocusables() {
-    // Restrict focus scope to active overlay/modal/screen so D-Pad never escapes behind modals
-    let scope = document.body;
-    if (state.player.active) {
-      scope = dom.playerOverlay;
-    } else if (state.modal.active) {
-      scope = dom.detailsModal;
-    } else if (dom.loginScreen.classList.contains('active')) {
-      scope = dom.loginScreen;
-    } else {
-      scope = dom.appScreen;
+      el.focus({ preventScroll: true });
+    } catch (_) {
+      el.focus();
     }
 
-    const candidates = Array.from(scope.querySelectorAll('[data-focusable="true"]'));
-    return candidates.filter(el => {
-      if (el.disabled) return false;
-      if (el.closest('.hidden')) return false;
+    // 1. Category Sidebar fast vertical centering
+    const catList = el.closest('.category-list');
+    if (catList) {
+      catList.scrollTop = el.offsetTop - (catList.clientHeight >> 1) + (el.offsetHeight >> 1);
+      return;
+    }
+
+    // 2. Live Channel Drawer fast vertical centering
+    const drawerList = el.closest('.osd-drawer-list');
+    if (drawerList) {
+      drawerList.scrollTop = el.offsetTop - (drawerList.clientHeight >> 1) + (el.offsetHeight >> 1);
+      return;
+    }
+
+    // 3. Horizontal Shelf ("Em Alta") fast horizontal + section vertical positioning
+    const rowTrack = el.closest('.home-row-track');
+    if (rowTrack) {
+      rowTrack.scrollLeft = Math.max(0, el.offsetLeft - 36);
       const sec = el.closest('.content-section');
-      if (sec && !sec.classList.contains('active')) return false;
-      const loginPanel = el.closest('.login-panel');
-      if (loginPanel && !loginPanel.classList.contains('active')) return false;
-      const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0;
-    });
+      const row = el.closest('.home-row');
+      if (sec && row) {
+        const targetTop = row.offsetTop - 80;
+        if (sec.scrollTop > targetTop || sec.scrollTop + sec.clientHeight < row.offsetTop + row.offsetHeight) {
+          sec.scrollTop = Math.max(0, targetTop);
+        }
+      }
+      return;
+    }
+
+    // 4. Catalog Main Grid fast vertical scroll
+    const catalogMain = el.closest('.catalog-main');
+    if (catalogMain) {
+      const elTop = el.offsetTop;
+      const elBottom = elTop + el.offsetHeight + 24;
+      if (elTop < catalogMain.scrollTop + 60) {
+        catalogMain.scrollTop = Math.max(0, elTop - 80);
+      } else if (elBottom > catalogMain.scrollTop + catalogMain.clientHeight) {
+        catalogMain.scrollTop = elBottom - catalogMain.clientHeight + 24;
+      }
+      return;
+    }
+
+    // 5. Fallback for modals/other sections
+    const sec = el.closest('.content-section, .details-modal');
+    if (sec) {
+      const elTop = el.offsetTop;
+      if (elTop < sec.scrollTop + 50 || elTop > sec.scrollTop + sec.clientHeight - 80) {
+        sec.scrollTop = Math.max(0, elTop - 100);
+      }
+    }
   }
 
+  function getActiveNavBtn() {
+    return document.querySelector(`.nav-item[data-section="${state.activeSection}"]`) || document.querySelector('.nav-item');
+  }
+
+  /**
+   * Structured Zone + Neighbor Navigation first (0ms DOM traversal), with geometric fallback
+   */
   function moveSpatialFocus(direction) {
+    const current = document.querySelector('.tv-focused') || document.activeElement;
+    if (!current) {
+      const first = getVisibleFocusables()[0];
+      if (first) setTvFocus(first);
+      return;
+    }
+
+    // --- ZONE 1: Top Navigation Pill (.tvos-nav-pill) ---
+    if (current.closest('.tvos-nav-pill')) {
+      if (direction === 'left' && current.previousElementSibling) {
+        setTvFocus(current.previousElementSibling);
+        return;
+      }
+      if (direction === 'right' && current.nextElementSibling) {
+        setTvFocus(current.nextElementSibling);
+        return;
+      }
+      if (direction === 'down') {
+        if (state.activeSection === 'home') {
+          setTvFocus(dom.btnHeroPlay);
+          return;
+        }
+        if (state.activeSection === 'live') {
+          const target = dom.liveCategoriesList.querySelector('.cat-btn.active') || dom.liveCategoriesList.querySelector('.cat-btn') || dom.liveChannelsGrid.querySelector('.channel-card');
+          if (target) { setTvFocus(target); return; }
+        }
+        if (state.activeSection === 'movies') {
+          const target = dom.moviesCategoriesList.querySelector('.cat-btn.active') || dom.moviesCategoriesList.querySelector('.cat-btn') || dom.moviesGrid.querySelector('.poster-card');
+          if (target) { setTvFocus(target); return; }
+        }
+        if (state.activeSection === 'series') {
+          const target = dom.seriesCategoriesList.querySelector('.cat-btn.active') || dom.seriesCategoriesList.querySelector('.cat-btn') || dom.seriesGrid.querySelector('.poster-card');
+          if (target) { setTvFocus(target); return; }
+        }
+        if (state.activeSection === 'search') {
+          setTvFocus(dom.globalSearchInput);
+          return;
+        }
+        if (state.activeSection === 'account') {
+          setTvFocus(dom.btnRefreshCache);
+          return;
+        }
+      }
+      if (direction === 'up') return;
+    }
+
+    // --- ZONE 2: Category Sidebar (.category-list) -> Instant Up/Down/Right! ---
+    const catList = current.closest('.category-list');
+    if (catList) {
+      if (direction === 'up') {
+        if (current.previousElementSibling) {
+          setTvFocus(current.previousElementSibling);
+        } else {
+          setTvFocus(getActiveNavBtn());
+        }
+        return;
+      }
+      if (direction === 'down') {
+        if (current.nextElementSibling) {
+          setTvFocus(current.nextElementSibling);
+        }
+        return;
+      }
+      if (direction === 'right') {
+        const layout = catList.closest('.catalog-layout');
+        if (layout) {
+          const firstCard = layout.querySelector('.channel-card, .poster-card, .toolbar-search input');
+          if (firstCard) setTvFocus(firstCard);
+        }
+        return;
+      }
+      if (direction === 'left') return;
+    }
+
+    // --- ZONE 3: Horizontal Shelves on Home (.home-row-track) -> Instant Left/Right/Up/Down! ---
+    const rowTrack = current.closest('.home-row-track');
+    if (rowTrack) {
+      if (direction === 'left') {
+        if (current.previousElementSibling) setTvFocus(current.previousElementSibling);
+        return;
+      }
+      if (direction === 'right') {
+        if (current.nextElementSibling) setTvFocus(current.nextElementSibling);
+        return;
+      }
+      const currentRow = current.closest('.home-row');
+      if (direction === 'up' && currentRow) {
+        const prevRow = currentRow.previousElementSibling;
+        if (prevRow && prevRow.classList.contains('home-row')) {
+          const card = prevRow.querySelector('[data-focusable="true"]');
+          if (card) { setTvFocus(card); return; }
+        }
+        const homeSec = document.getElementById('section-home');
+        if (homeSec) homeSec.scrollTop = 0;
+        setTvFocus(dom.btnHeroPlay);
+        return;
+      }
+      if (direction === 'down' && currentRow) {
+        const nextRow = currentRow.nextElementSibling;
+        if (nextRow && nextRow.classList.contains('home-row')) {
+          const card = nextRow.querySelector('[data-focusable="true"]');
+          if (card) { setTvFocus(card); return; }
+        }
+        return;
+      }
+    }
+
+    // --- ZONE 4: Hero Banner Buttons (.hero-buttons) ---
+    if (current.closest('.hero-buttons')) {
+      if (direction === 'left' && current.previousElementSibling) {
+        setTvFocus(current.previousElementSibling);
+        return;
+      }
+      if (direction === 'right' && current.nextElementSibling) {
+        setTvFocus(current.nextElementSibling);
+        return;
+      }
+      if (direction === 'up') {
+        setTvFocus(getActiveNavBtn());
+        return;
+      }
+      if (direction === 'down') {
+        const firstShelfCard = dom.homeRows.querySelector('[data-focusable="true"]');
+        if (firstShelfCard) setTvFocus(firstShelfCard);
+        return;
+      }
+    }
+
+    // --- ZONE 5: Global Search Box (.search-hero-box) ---
+    if (current === dom.globalSearchInput) {
+      if (direction === 'right') {
+        setTvFocus(dom.btnGlobalSearch);
+        return;
+      }
+      if (direction === 'up') {
+        setTvFocus(getActiveNavBtn());
+        return;
+      }
+      if (direction === 'down') {
+        const firstResult = dom.searchResultsGrid.querySelector('[data-focusable="true"]');
+        if (firstResult) setTvFocus(firstResult);
+        return;
+      }
+      return;
+    }
+    if (current === dom.btnGlobalSearch) {
+      if (direction === 'left') {
+        setTvFocus(dom.globalSearchInput);
+        return;
+      }
+      if (direction === 'up') {
+        setTvFocus(getActiveNavBtn());
+        return;
+      }
+      if (direction === 'down') {
+        const firstResult = dom.searchResultsGrid.querySelector('[data-focusable="true"]');
+        if (firstResult) setTvFocus(firstResult);
+        return;
+      }
+      return;
+    }
+
+    // --- ZONE 6: Live Channel Drawer inside Player (.osd-drawer-list) ---
+    const drawerList = current.closest('.osd-drawer-list');
+    if (drawerList) {
+      if (direction === 'up' && current.previousElementSibling) {
+        setTvFocus(current.previousElementSibling);
+        return;
+      }
+      if (direction === 'down') {
+        if (current.nextElementSibling) {
+          setTvFocus(current.nextElementSibling);
+        } else {
+          setTvFocus(dom.btnOsdPlayPause);
+        }
+        return;
+      }
+      if (direction === 'right') {
+        setTvFocus(dom.btnOsdPlayPause);
+        return;
+      }
+      return;
+    }
+
+    // --- ZONE 7: Fallback Geometric Navigation for Grids & Modals ---
     const focusables = getVisibleFocusables();
     if (focusables.length === 0) return;
-
-    const current = document.querySelector('.tv-focused') || document.activeElement;
-    if (!current || !focusables.includes(current)) {
+    if (!focusables.includes(current)) {
       setTvFocus(focusables[0]);
       return;
     }
@@ -1850,8 +2125,7 @@
       const primaryDist = (direction === 'left' || direction === 'right') ? Math.abs(dx) : Math.abs(dy);
       const orthoDist = (direction === 'left' || direction === 'right') ? Math.abs(dy) : Math.abs(dx);
 
-      // Weight orthogonal distance higher so focus stays in the same row/column naturally
-      const score = primaryDist + orthoDist * 2.65;
+      const score = primaryDist + orthoDist * 2.5;
       if (score < bestScore) {
         bestScore = score;
         bestCandidate = cand;
@@ -1860,7 +2134,33 @@
 
     if (bestCandidate) {
       setTvFocus(bestCandidate);
+    } else if (direction === 'up' && dom.appScreen.classList.contains('active') && !state.modal.active && !state.player.active) {
+      setTvFocus(getActiveNavBtn());
     }
+  }
+
+  function getVisibleFocusables() {
+    let scope = document.body;
+    if (state.player.active) {
+      scope = dom.playerOverlay;
+    } else if (state.modal.active) {
+      scope = dom.detailsModal;
+    } else if (dom.loginScreen.classList.contains('active')) {
+      scope = dom.loginScreen;
+    } else {
+      scope = dom.appScreen;
+    }
+
+    const candidates = Array.from(scope.querySelectorAll('[data-focusable="true"]'));
+    return candidates.filter(el => {
+      if (el.disabled) return false;
+      if (el.closest('.hidden')) return false;
+      const sec = el.closest('.content-section');
+      if (sec && !sec.classList.contains('active')) return false;
+      const loginPanel = el.closest('.login-panel');
+      if (loginPanel && !loginPanel.classList.contains('active')) return false;
+      return el.offsetWidth > 0 && el.offsetHeight > 0;
+    });
   }
 
   function setupKeyboardAndRemoteNavigation() {
@@ -1870,7 +2170,6 @@
       const activeEl = document.activeElement;
       const isTextInput = activeEl && activeEl.tagName === 'INPUT';
 
-      // Detect Back button on Fire TV Remote / Browser / Keyboard
       const isBackKey =
         key === 'Escape' ||
         key === 'GoBack' ||
@@ -1886,9 +2185,7 @@
         return;
       }
 
-      // If Video Player is active:
       if (state.player.active) {
-        // Media keys on Fire TV Remote
         if (key === 'MediaPlayPause' || keyCode === 179) {
           e.preventDefault();
           togglePlayPause();
@@ -1896,16 +2193,15 @@
         }
         if (key === 'MediaFastForward' || keyCode === 228) {
           e.preventDefault();
-          seekRelative(10);
+          seekRelative(15);
           return;
         }
         if (key === 'MediaRewind' || keyCode === 227) {
           e.preventDefault();
-          seekRelative(-10);
+          seekRelative(-15);
           return;
         }
 
-        // If OSD is currently hidden (screen is CLEAR):
         if (!state.player.osdVisible) {
           if (['Enter', ' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
             e.preventDefault();
@@ -1913,7 +2209,6 @@
             return;
           }
         } else {
-          // OSD is visible -> reset auto-hide timer on any key press
           resetOsdAutoHideTimer();
           const curFocused = document.querySelector('.tv-focused') || document.activeElement;
           if (curFocused === dom.osdProgressWrap && (key === 'ArrowLeft' || key === 'ArrowRight')) {
@@ -1931,12 +2226,7 @@
         return;
       }
 
-      // Spatial D-Pad Navigation across UI
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) {
-        // Allow left/right cursor movement inside text inputs only when typing
-        if (isTextInput && (key === 'ArrowLeft' || key === 'ArrowRight')) {
-          return;
-        }
         e.preventDefault();
         const dir = key.replace('Arrow', '').toLowerCase();
         moveSpatialFocus(dir);
@@ -1948,14 +2238,12 @@
      8. APP EVENT WIRING & INITIALIZATION
      ======================================================================== */
   function setupAppEvents() {
-    // Top Navigation Bar
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', () => {
         switchSection(btn.dataset.section);
       });
     });
 
-    // Hero Buttons
     dom.btnHeroPlay.addEventListener('click', () => {
       if (!state.heroItem) return;
       if (state.heroItem.type === 'live') {
@@ -1975,7 +2263,6 @@
       switchSection('live');
     });
 
-    // Category Search Filters
     dom.liveFilterInput.addEventListener('input', () => {
       state.liveRenderLimit = PAGE_SIZE;
       renderLiveChannels();
@@ -1989,7 +2276,6 @@
       renderSeriesGrid();
     });
 
-    // Load More Pagination Buttons
     dom.btnLiveLoadMore.addEventListener('click', () => {
       state.liveRenderLimit += PAGE_SIZE;
       renderLiveChannels();
@@ -2003,7 +2289,6 @@
       renderSeriesGrid();
     });
 
-    // Details Modal Buttons
     dom.btnDetailsClose.addEventListener('click', closeDetailsModal);
     dom.btnDetailsFav.addEventListener('click', () => {
       if (state.modal.item) {
@@ -2025,24 +2310,29 @@
       }
     });
 
-    // Global Search
     dom.btnGlobalSearch.addEventListener('click', executeGlobalSearch);
+    dom.globalSearchInput.addEventListener('input', () => {
+      if (dom.globalSearchInput.value.trim().length >= 2) {
+        executeGlobalSearch();
+      }
+    });
     dom.globalSearchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') executeGlobalSearch();
     });
 
-    // Account Actions
     dom.btnRefreshCache.addEventListener('click', async () => {
       state.liveByCat.clear();
       state.vodByCat.clear();
       state.seriesByCat.clear();
       state.vodInfoCache.clear();
       state.seriesInfoCache.clear();
+      state.epgCache.clear();
       await initializeCatalog();
       switchSection('home');
     });
 
     dom.btnSwitchLogin.addEventListener('click', () => {
+      closePlayer();
       localStorage.removeItem(STORAGE_KEYS.SESSION);
       dom.appScreen.classList.remove('active');
       dom.loginScreen.classList.add('active');
@@ -2059,7 +2349,6 @@
     setupVideoElementEvents();
     setupKeyboardAndRemoteNavigation();
 
-    // Focus the primary login button right away so 1 press of OK on Fire TV remote logs in!
     setTvFocus(dom.btnLoginSubmit);
   }
 

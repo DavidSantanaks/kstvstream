@@ -25,6 +25,7 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -40,6 +41,9 @@ import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.PlayerView;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -66,31 +70,41 @@ public class MainActivity extends AppCompatActivity {
     // Native OSD Overlay (Hidden on BACK press for 100% CLEAR screen)
     private FrameLayout osdRoot;
     private TextView osdBadgeLive;
+    private TextView backHintView;
     private TextView osdTitleView;
     private TextView osdSubtitleView;
     private TextView osdTimeView;
     private LinearLayout seekBarWrap;
     private SeekBar osdSeekBar;
 
+    // Native Channel List Drawer (Live TV when pressing OK / center button)
+    private LinearLayout channelDrawerBox;
+    private ScrollView channelScrollView;
+    private LinearLayout channelListContainer;
+    private View activeChannelButtonView = null;
+
+    private Button btnChannelsDrawer;
     private Button btnPrevCh;
     private Button btnRw15;
     private Button btnPlayPause;
     private Button btnFf15;
     private Button btnFf60;
     private Button btnNextCh;
+    private Button btnMiniPlayer;
     private Button btnAspect;
     private Button btnHideOsd;
     private Button btnExitPlayer;
 
     private volatile boolean isNativePlayerOpen = false;
     private volatile boolean isCurrentStreamLive = false;
+    private volatile boolean isMiniPlayerMode = false;
     private int currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
-    private static final long OSD_AUTO_HIDE_MS = 4500L;
+    private static final long OSD_AUTO_HIDE_MS = 5000L;
 
     private final Runnable autoHideOsdRunnable = () -> {
-        if (isNativePlayerOpen && exoPlayer != null && exoPlayer.isPlaying()) {
+        if (isNativePlayerOpen && !isMiniPlayerMode && exoPlayer != null && exoPlayer.isPlaying()) {
             hideNativeOsd();
         }
     };
@@ -98,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
     private final Runnable progressRunnable = new Runnable() {
         @Override
         public void run() {
-            if (isNativePlayerOpen && exoPlayer != null && !isCurrentStreamLive) {
+            if (isNativePlayerOpen && !isMiniPlayerMode && exoPlayer != null && !isCurrentStreamLive) {
                 long pos = Math.max(0L, exoPlayer.getCurrentPosition());
                 long dur = Math.max(0L, exoPlayer.getDuration());
                 if (dur > 0) {
@@ -224,7 +238,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Apple TV Minimalist OSD Container
         osdRoot = new FrameLayout(this);
-        osdRoot.setPadding(dp(36), dp(26), dp(36), dp(28));
+        osdRoot.setPadding(dp(32), dp(22), dp(32), dp(24));
 
         // Top Bar inside OSD
         LinearLayout topBar = new LinearLayout(this);
@@ -243,13 +257,13 @@ public class MainActivity extends AppCompatActivity {
         View spacer = new View(this);
         topBar.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
 
-        TextView backHint = new TextView(this);
-        backHint.setText("Aperte VOLTAR para limpar a tela");
-        backHint.setTextColor(Color.parseColor("#D0D4E0"));
-        backHint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        backHint.setPadding(dp(14), dp(6), dp(14), dp(6));
-        backHint.setBackground(makeRoundedRect(Color.parseColor("#D912151E"), dp(99), 1, Color.parseColor("#28FFFFFF")));
-        topBar.addView(backHint);
+        backHintView = new TextView(this);
+        backHintView.setText("VOLTAR: Limpar Tela  •  OK: Canais");
+        backHintView.setTextColor(Color.parseColor("#D0D4E0"));
+        backHintView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        backHintView.setPadding(dp(14), dp(6), dp(14), dp(6));
+        backHintView.setBackground(makeRoundedRect(Color.parseColor("#D912151E"), dp(99), 1, Color.parseColor("#28FFFFFF")));
+        topBar.addView(backHintView);
 
         osdRoot.addView(topBar, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -257,13 +271,60 @@ public class MainActivity extends AppCompatActivity {
                 Gravity.TOP
         ));
 
+        // Live Channel List Drawer (Left Floating Panel on OK press)
+        channelDrawerBox = new LinearLayout(this);
+        channelDrawerBox.setOrientation(LinearLayout.VERTICAL);
+        channelDrawerBox.setPadding(dp(14), dp(14), dp(14), dp(14));
+        channelDrawerBox.setBackground(makeRoundedRect(Color.parseColor("#F010131D"), dp(18), dp(1), Color.parseColor("#33FFFFFF")));
+        channelDrawerBox.setVisibility(View.GONE);
+
+        TextView drawerTitle = new TextView(this);
+        drawerTitle.setText("CANAIS DA CATEGORIA");
+        drawerTitle.setTextColor(Color.parseColor("#60A5FA"));
+        drawerTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        drawerTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        channelDrawerBox.addView(drawerTitle);
+
+        TextView drawerSub = new TextView(this);
+        drawerSub.setText("Selecione para trocar imediatamente");
+        drawerSub.setTextColor(Color.parseColor("#9CA3AF"));
+        drawerSub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        LinearLayout.LayoutParams dsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        dsParams.bottomMargin = dp(8);
+        channelDrawerBox.addView(drawerSub, dsParams);
+
+        channelScrollView = new ScrollView(this);
+        channelScrollView.setVerticalScrollBarEnabled(false);
+        channelListContainer = new LinearLayout(this);
+        channelListContainer.setOrientation(LinearLayout.VERTICAL);
+        channelScrollView.addView(channelListContainer, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+        channelDrawerBox.addView(channelScrollView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+        ));
+
+        FrameLayout.LayoutParams drawerParams = new FrameLayout.LayoutParams(
+                dp(300),
+                dp(310),
+                Gravity.START | Gravity.TOP
+        );
+        drawerParams.topMargin = dp(48);
+        osdRoot.addView(channelDrawerBox, drawerParams);
+
         // Bottom Sheet inside OSD
         LinearLayout bottomSheet = new LinearLayout(this);
         bottomSheet.setOrientation(LinearLayout.VERTICAL);
-        bottomSheet.setPadding(dp(24), dp(18), dp(24), dp(18));
+        bottomSheet.setPadding(dp(22), dp(16), dp(22), dp(16));
         bottomSheet.setBackground(makeRoundedRect(Color.parseColor("#EB12151F"), dp(22), dp(1), Color.parseColor("#33FFFFFF")));
 
-        // Header Row (Title + Subtitle on Left, Time on Right)
+        // Header Row (Title + Subtitle/EPG on Left, Time on Right)
         LinearLayout headerRow = new LinearLayout(this);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -274,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
         osdTitleView = new TextView(this);
         osdTitleView.setText("KS TV-Stream");
         osdTitleView.setTextColor(Color.WHITE);
-        osdTitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
+        osdTitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         osdTitleView.setTypeface(Typeface.DEFAULT_BOLD);
         osdTitleView.setSingleLine(true);
         osdTitleView.setEllipsize(TextUtils.TruncateAt.END);
@@ -285,6 +346,7 @@ public class MainActivity extends AppCompatActivity {
         osdSubtitleView.setTextColor(Color.parseColor("#9DA3B4"));
         osdSubtitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         osdSubtitleView.setSingleLine(true);
+        osdSubtitleView.setEllipsize(TextUtils.TruncateAt.END);
         titlesCol.addView(osdSubtitleView);
 
         headerRow.addView(titlesCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -306,8 +368,8 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        sbWrapParams.topMargin = dp(10);
-        sbWrapParams.bottomMargin = dp(6);
+        sbWrapParams.topMargin = dp(8);
+        sbWrapParams.bottomMargin = dp(4);
         seekBarWrap.setBackground(makeRoundedRect(Color.parseColor("#18FFFFFF"), dp(10), dp(1), Color.TRANSPARENT));
 
         osdSeekBar = new SeekBar(this);
@@ -342,7 +404,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
-        // Handle D-Pad Left / Right directly on the SeekBar for smooth 15-second steps!
         osdSeekBar.setOnKeyListener((v, keyCode, event) -> {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
@@ -362,7 +423,7 @@ public class MainActivity extends AppCompatActivity {
         ));
         bottomSheet.addView(seekBarWrap, sbWrapParams);
 
-        // Control Buttons Row
+        // Control Buttons Row (Monochrome symbols only — no orange emoji!)
         LinearLayout controlsRow = new LinearLayout(this);
         controlsRow.setOrientation(LinearLayout.HORIZONTAL);
         controlsRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -372,7 +433,19 @@ public class MainActivity extends AppCompatActivity {
         );
         ctrlRowParams.topMargin = dp(8);
 
-        btnPrevCh = createOsdButton("⏮ Canal Ant.", false, v -> {
+        btnChannelsDrawer = createOsdButton("☰ Canais", false, v -> {
+            resetOsdTimer();
+            if (channelDrawerBox.getVisibility() == View.VISIBLE && activeChannelButtonView != null) {
+                activeChannelButtonView.requestFocus();
+            } else {
+                channelDrawerBox.setVisibility(View.VISIBLE);
+                if (activeChannelButtonView != null) {
+                    activeChannelButtonView.requestFocus();
+                }
+            }
+        });
+
+        btnPrevCh = createOsdButton("|◀ Canal Ant.", false, v -> {
             resetOsdTimer();
             runJs("if(window.onNativeStepChannel) window.onNativeStepChannel(-1);");
         });
@@ -381,7 +454,7 @@ public class MainActivity extends AppCompatActivity {
             seekRelativeMs(-15000L);
         });
 
-        btnPlayPause = createOsdButton("⏸ Pausar", true, v -> {
+        btnPlayPause = createOsdButton("❚❚ Pausar", true, v -> {
             toggleNativePlayPause();
         });
 
@@ -389,20 +462,24 @@ public class MainActivity extends AppCompatActivity {
             seekRelativeMs(15000L);
         });
 
-        btnFf60 = createOsdButton("⏭ +1 min", false, v -> {
+        btnFf60 = createOsdButton("+1 min", false, v -> {
             seekRelativeMs(60000L);
         });
 
-        btnNextCh = createOsdButton("⏭ Próx. Canal", false, v -> {
+        btnNextCh = createOsdButton("▶| Próx. Canal", false, v -> {
             resetOsdTimer();
             runJs("if(window.onNativeStepChannel) window.onNativeStepChannel(1);");
+        });
+
+        btnMiniPlayer = createOsdButton("⧉ Mini Player", false, v -> {
+            enterNativeMiniPlayer();
         });
 
         btnAspect = createOsdButton("⛶ Tela: Padrão", false, v -> {
             cycleNativeAspect();
         });
 
-        btnHideOsd = createOsdButton("✕ Ocultar Opções", false, v -> {
+        btnHideOsd = createOsdButton("✕ Ocultar", false, v -> {
             hideNativeOsd();
         });
 
@@ -410,12 +487,14 @@ public class MainActivity extends AppCompatActivity {
             closeNativePlayer();
         });
 
+        controlsRow.addView(btnChannelsDrawer);
         controlsRow.addView(btnPrevCh);
         controlsRow.addView(btnRw15);
         controlsRow.addView(btnPlayPause);
         controlsRow.addView(btnFf15);
         controlsRow.addView(btnFf60);
         controlsRow.addView(btnNextCh);
+        controlsRow.addView(btnMiniPlayer);
         controlsRow.addView(btnAspect);
         controlsRow.addView(btnHideOsd);
 
@@ -442,26 +521,29 @@ public class MainActivity extends AppCompatActivity {
         Button btn = new Button(this);
         btn.setText(label);
         btn.setAllCaps(false);
-        btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         btn.setTypeface(Typeface.DEFAULT_BOLD);
-        btn.setPadding(dp(16), dp(8), dp(16), dp(8));
-        btn.setMinimumHeight(dp(38));
+        btn.setPadding(dp(13), dp(7), dp(13), dp(7));
+        btn.setMinimumHeight(dp(36));
         btn.setMinimumWidth(0);
-        btn.setMinHeight(dp(38));
+        btn.setMinHeight(dp(36));
         btn.setMinWidth(0);
         btn.setFocusable(true);
         btn.setFocusableInTouchMode(true);
 
         styleOsdButton(btn, isPrimary, false);
 
-        btn.setOnFocusChangeListener((v, hasFocus) -> styleOsdButton(btn, isPrimary, hasFocus));
+        btn.setOnFocusChangeListener((v, hasFocus) -> {
+            styleOsdButton(btn, isPrimary, hasFocus);
+            if (hasFocus) resetOsdTimer();
+        });
         btn.setOnClickListener(onClick);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        lp.rightMargin = dp(8);
+        lp.rightMargin = dp(6);
         btn.setLayoutParams(lp);
         return btn;
     }
@@ -470,18 +552,90 @@ public class MainActivity extends AppCompatActivity {
         if (focused) {
             btn.setTextColor(Color.BLACK);
             btn.setBackground(makeRoundedRect(Color.WHITE, dp(99), dp(2), Color.WHITE));
-            btn.setScaleX(1.06f);
-            btn.setScaleY(1.06f);
         } else if (isPrimary) {
             btn.setTextColor(Color.WHITE);
             btn.setBackground(makeRoundedRect(Color.parseColor("#38FFFFFF"), dp(99), dp(1), Color.parseColor("#66FFFFFF")));
-            btn.setScaleX(1.0f);
-            btn.setScaleY(1.0f);
         } else {
             btn.setTextColor(Color.parseColor("#E5E7EB"));
             btn.setBackground(makeRoundedRect(Color.parseColor("#1FFFFFFF"), dp(99), dp(1), Color.parseColor("#2EFFFFFF")));
-            btn.setScaleX(1.0f);
-            btn.setScaleY(1.0f);
+        }
+    }
+
+    private void populateLiveChannelDrawer(final String jsonArrayStr, final int currentIdx) {
+        runOnUiThread(() -> {
+            channelListContainer.removeAllViews();
+            activeChannelButtonView = null;
+            if (jsonArrayStr == null || jsonArrayStr.isEmpty()) return;
+
+            try {
+                JSONArray arr = new JSONArray(jsonArrayStr);
+                for (int i = 0; i < arr.length(); i++) {
+                    JSONObject obj = arr.getJSONObject(i);
+                    final int itemIdx = obj.optInt("idx", i);
+                    String name = obj.optString("name", "Canal " + (itemIdx + 1));
+                    String epg = obj.optString("epg", "");
+                    final boolean isCurrent = (itemIdx == currentIdx);
+
+                    Button chBtn = new Button(this);
+                    String label = (isCurrent ? "● " : "") + (itemIdx + 1) + ". " + name;
+                    if (epg != null && !epg.isEmpty()) {
+                        label += "\n   " + epg;
+                    }
+                    chBtn.setText(label);
+                    chBtn.setAllCaps(false);
+                    chBtn.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+                    chBtn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+                    chBtn.setSingleLine(epg == null || epg.isEmpty());
+                    chBtn.setMaxLines(2);
+                    chBtn.setEllipsize(TextUtils.TruncateAt.END);
+                    chBtn.setPadding(dp(12), dp(8), dp(12), dp(8));
+                    chBtn.setMinimumHeight(dp(38));
+                    chBtn.setMinHeight(dp(38));
+                    chBtn.setFocusable(true);
+                    chBtn.setFocusableInTouchMode(true);
+
+                    styleDrawerChannelButton(chBtn, isCurrent, false);
+
+                    chBtn.setOnFocusChangeListener((v, hasFocus) -> {
+                        styleDrawerChannelButton(chBtn, isCurrent, hasFocus);
+                        if (hasFocus) resetOsdTimer();
+                    });
+
+                    chBtn.setOnClickListener(v -> {
+                        resetOsdTimer();
+                        runJs("if(window.onNativeSelectChannelIndex) window.onNativeSelectChannelIndex(" + itemIdx + ");");
+                    });
+
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    );
+                    lp.bottomMargin = dp(4);
+                    chBtn.setLayoutParams(lp);
+
+                    channelListContainer.addView(chBtn);
+                    if (isCurrent) {
+                        activeChannelButtonView = chBtn;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    private void styleDrawerChannelButton(Button btn, boolean isCurrent, boolean focused) {
+        if (focused) {
+            btn.setTextColor(Color.BLACK);
+            btn.setBackground(makeRoundedRect(Color.WHITE, dp(10), dp(2), Color.WHITE));
+            btn.setTypeface(Typeface.DEFAULT_BOLD);
+        } else if (isCurrent) {
+            btn.setTextColor(Color.WHITE);
+            btn.setBackground(makeRoundedRect(Color.parseColor("#330A84FF"), dp(10), dp(1), Color.parseColor("#880A84FF")));
+            btn.setTypeface(Typeface.DEFAULT_BOLD);
+        } else {
+            btn.setTextColor(Color.parseColor("#D1D5DB"));
+            btn.setBackground(makeRoundedRect(Color.parseColor("#14FFFFFF"), dp(10), 0, Color.TRANSPARENT));
+            btn.setTypeface(Typeface.DEFAULT);
         }
     }
 
@@ -529,12 +683,14 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_BUFFERING) {
-                    loadingBox.setVisibility(View.VISIBLE);
-                    loadingText.setText("Carregando vídeo...");
+                    if (!isMiniPlayerMode) {
+                        loadingBox.setVisibility(View.VISIBLE);
+                        loadingText.setText("Carregando vídeo...");
+                    }
                 } else if (playbackState == Player.STATE_READY) {
                     loadingBox.setVisibility(View.GONE);
                 } else if (playbackState == Player.STATE_ENDED && !isCurrentStreamLive) {
-                    showNativeOsd();
+                    showNativeOsd(false);
                 }
             }
 
@@ -545,7 +701,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
-                btnPlayPause.setText(isPlaying ? "⏸ Pausar" : "▶ Reproduzir");
+                btnPlayPause.setText(isPlaying ? "❚❚ Pausar" : "▶ Reproduzir");
                 if (isPlaying) {
                     loadingBox.setVisibility(View.GONE);
                     resetOsdTimer();
@@ -554,9 +710,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
-                loadingBox.setVisibility(View.VISIBLE);
-                loadingText.setText("Sinal indisponível no momento. Aperte VOLTAR.");
-                showNativeOsd();
+                if (!isMiniPlayerMode) {
+                    loadingBox.setVisibility(View.VISIBLE);
+                    loadingText.setText("Sinal indisponível no momento. Aperte VOLTAR.");
+                    showNativeOsd(false);
+                }
             }
         });
     }
@@ -566,40 +724,52 @@ public class MainActivity extends AppCompatActivity {
             isNativePlayerOpen = true;
             isCurrentStreamLive = isLive;
 
+            if (isMiniPlayerMode) {
+                restoreFullscreenLayout();
+            }
+
             osdTitleView.setText(title != null ? title : "KS TV-Stream");
             osdSubtitleView.setText(subtitle != null ? subtitle : "");
 
             if (isLive) {
                 osdBadgeLive.setText("● AO VIVO");
                 osdBadgeLive.setBackground(makeRoundedRect(Color.parseColor("#FF3B30"), dp(99), 0, 0));
+                backHintView.setText("OK: Lista de Canais  •  VOLTAR: Limpar / Mini Player");
                 osdTimeView.setVisibility(View.GONE);
                 seekBarWrap.setVisibility(View.GONE);
+                channelDrawerBox.setVisibility(View.VISIBLE);
+                btnChannelsDrawer.setVisibility(View.VISIBLE);
                 btnPrevCh.setVisibility(View.VISIBLE);
                 btnNextCh.setVisibility(View.VISIBLE);
+                btnMiniPlayer.setVisibility(View.VISIBLE);
                 btnRw15.setVisibility(View.GONE);
                 btnFf15.setVisibility(View.GONE);
                 btnFf60.setVisibility(View.GONE);
             } else {
                 osdBadgeLive.setText("KS TV-Stream • Cinema");
                 osdBadgeLive.setBackground(makeRoundedRect(Color.parseColor("#2A3042"), dp(99), dp(1), Color.parseColor("#38FFFFFF")));
+                backHintView.setText("Aperte VOLTAR para limpar a tela");
                 osdTimeView.setVisibility(View.VISIBLE);
                 osdTimeView.setText("00:00 / 00:00");
                 seekBarWrap.setVisibility(View.VISIBLE);
                 osdSeekBar.setProgress(0);
+                channelDrawerBox.setVisibility(View.GONE);
+                btnChannelsDrawer.setVisibility(View.GONE);
                 btnPrevCh.setVisibility(View.GONE);
                 btnNextCh.setVisibility(View.GONE);
+                btnMiniPlayer.setVisibility(View.GONE);
                 btnRw15.setVisibility(View.VISIBLE);
                 btnFf15.setVisibility(View.VISIBLE);
                 btnFf60.setVisibility(View.VISIBLE);
             }
 
-            // Hide WebView so 100% of GPU goes to 4K video and nothing blocks SurfaceView!
+            // Hide WebView during fullscreen playback so 100% of GPU goes to video
             webView.setVisibility(View.GONE);
             nativePlayerRoot.setVisibility(View.VISIBLE);
             loadingBox.setVisibility(View.VISIBLE);
             loadingText.setText("Conectando ao sinal...");
 
-            showNativeOsd();
+            showNativeOsd(false);
 
             exoPlayer.stop();
             exoPlayer.clearMediaItems();
@@ -610,9 +780,70 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void showNativeOsd() {
+    private void restoreFullscreenLayout() {
+        isMiniPlayerMode = false;
+        FrameLayout.LayoutParams fullLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        );
+        nativePlayerRoot.setLayoutParams(fullLp);
+        nativePlayerRoot.setPadding(0, 0, 0, 0);
+        nativePlayerRoot.setBackgroundColor(Color.BLACK);
+        runJs("if(window.onNativeMiniPlayerState) window.onNativeMiniPlayerState(false);");
+    }
+
+    private void enterNativeMiniPlayer() {
+        runOnUiThread(() -> {
+            if (!isNativePlayerOpen) return;
+            isMiniPlayerMode = true;
+            hideNativeOsd();
+            loadingBox.setVisibility(View.GONE);
+
+            FrameLayout.LayoutParams pipLp = new FrameLayout.LayoutParams(
+                    dp(288),
+                    dp(162),
+                    Gravity.BOTTOM | Gravity.END
+            );
+            pipLp.rightMargin = dp(26);
+            pipLp.bottomMargin = dp(22);
+            nativePlayerRoot.setLayoutParams(pipLp);
+            nativePlayerRoot.setPadding(dp(2), dp(2), dp(2), dp(2));
+            nativePlayerRoot.setBackground(makeRoundedRect(Color.BLACK, dp(12), dp(2), Color.parseColor("#80FFFFFF")));
+
+            webView.setVisibility(View.VISIBLE);
+            webView.requestFocus();
+            runJs("if(window.onNativeMiniPlayerState) window.onNativeMiniPlayerState(true);");
+        });
+    }
+
+    private void expandMiniPlayerToFullscreen() {
+        runOnUiThread(() -> {
+            if (!isNativePlayerOpen) return;
+            restoreFullscreenLayout();
+            webView.setVisibility(View.GONE);
+            showNativeOsd(false);
+        });
+    }
+
+    private void showNativeOsd(boolean focusChannelDrawer) {
         osdRoot.setVisibility(View.VISIBLE);
-        btnPlayPause.requestFocus();
+        if (isCurrentStreamLive) {
+            channelDrawerBox.setVisibility(View.VISIBLE);
+            if (focusChannelDrawer && activeChannelButtonView != null) {
+                channelScrollView.post(() -> {
+                    if (activeChannelButtonView != null) {
+                        int scrollY = Math.max(0, activeChannelButtonView.getTop() - dp(90));
+                        channelScrollView.scrollTo(0, scrollY);
+                        activeChannelButtonView.requestFocus();
+                    }
+                });
+            } else {
+                btnPlayPause.requestFocus();
+            }
+        } else {
+            channelDrawerBox.setVisibility(View.GONE);
+            btnPlayPause.requestFocus();
+        }
         resetOsdTimer();
     }
 
@@ -627,15 +858,20 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void closeNativePlayer() {
-        uiHandler.removeCallbacks(autoHideOsdRunnable);
-        isNativePlayerOpen = false;
-        if (exoPlayer != null) {
-            exoPlayer.stop();
-            exoPlayer.clearMediaItems();
-        }
-        nativePlayerRoot.setVisibility(View.GONE);
-        webView.setVisibility(View.VISIBLE);
-        webView.requestFocus();
+        runOnUiThread(() -> {
+            uiHandler.removeCallbacks(autoHideOsdRunnable);
+            isNativePlayerOpen = false;
+            if (isMiniPlayerMode) {
+                restoreFullscreenLayout();
+            }
+            if (exoPlayer != null) {
+                exoPlayer.stop();
+                exoPlayer.clearMediaItems();
+            }
+            nativePlayerRoot.setVisibility(View.GONE);
+            webView.setVisibility(View.VISIBLE);
+            webView.requestFocus();
+        });
     }
 
     private void toggleNativePlayPause() {
@@ -704,15 +940,20 @@ public class MainActivity extends AppCompatActivity {
         int keyCode = event.getKeyCode();
         int action = event.getAction();
 
-        // 1. NATIVE VIDEO PLAYER KEY HANDLING (Instantaneous 0ms Response!)
-        if (isNativePlayerOpen) {
+        // 1. NATIVE FULLSCREEN VIDEO PLAYER KEY HANDLING
+        // When in Mini Player mode (isMiniPlayerMode == true), D-Pad keys go to the Catalog WebView below!
+        if (isNativePlayerOpen && !isMiniPlayerMode) {
             // BACK BUTTON RULE:
             // - If OSD (player options) is visible -> Hide OSD immediately (leave video 100% CLEAR)!
-            // - If OSD is already hidden (screen is clear) -> Exit player back to catalog!
+            // - If OSD is already hidden (screen is clear):
+            //   * For Live TV -> Enter Mini Player (keep playing in corner while browsing channels)!
+            //   * For VOD (Movie/Series) -> Exit player back to catalog!
             if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
                 if (action == KeyEvent.ACTION_DOWN) {
                     if (osdRoot.getVisibility() == View.VISIBLE) {
                         hideNativeOsd();
+                    } else if (isCurrentStreamLive) {
+                        enterNativeMiniPlayer();
                     } else {
                         closeNativePlayer();
                     }
@@ -729,42 +970,46 @@ public class MainActivity extends AppCompatActivity {
             }
             if (keyCode == KeyEvent.KEYCODE_MEDIA_FAST_FORWARD) {
                 if (action == KeyEvent.ACTION_DOWN) {
-                    showNativeOsd();
+                    showNativeOsd(false);
                     seekRelativeMs(15000L);
                 }
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_MEDIA_REWIND) {
                 if (action == KeyEvent.ACTION_DOWN) {
-                    showNativeOsd();
+                    showNativeOsd(false);
                     seekRelativeMs(-15000L);
                 }
                 return true;
             }
 
-            // If screen is currently CLEAR (OSD hidden), any D-Pad or OK press brings up the OSD!
+            // If screen is currently CLEAR (OSD hidden):
+            // - Pressing OK / Center button on Live TV opens OSD and focuses the Live Channel List Drawer!
+            // - Any other D-Pad key brings up the OSD focused on Play/Pause.
             if (osdRoot.getVisibility() != View.VISIBLE) {
-                if (action == KeyEvent.ACTION_DOWN && (
-                        keyCode == KeyEvent.KEYCODE_DPAD_CENTER
-                        || keyCode == KeyEvent.KEYCODE_ENTER
-                        || keyCode == KeyEvent.KEYCODE_DPAD_UP
-                        || keyCode == KeyEvent.KEYCODE_DPAD_DOWN
-                        || keyCode == KeyEvent.KEYCODE_DPAD_LEFT
-                        || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-                )) {
-                    showNativeOsd();
+                if (action == KeyEvent.ACTION_DOWN) {
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                        showNativeOsd(isCurrentStreamLive);
+                        return true;
+                    } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP
+                            || keyCode == KeyEvent.KEYCODE_DPAD_DOWN
+                            || keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                            || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        showNativeOsd(false);
+                        return true;
+                    }
                 }
                 return true;
             }
 
-            // OSD is visible -> Reset auto-hide timer and let Android native focus navigate OSD buttons & SeekBar!
+            // OSD is visible -> Reset auto-hide timer and let Android native focus navigate OSD buttons, Channel Drawer & SeekBar!
             if (action == KeyEvent.ACTION_DOWN) {
                 resetOsdTimer();
             }
             return super.dispatchKeyEvent(event);
         }
 
-        // 2. CATALOG WEBVIEW KEY HANDLING
+        // 2. CATALOG WEBVIEW KEY HANDLING (Including while Live TV Mini Player is active in the corner)
         String mappedKey = null;
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) {
             mappedKey = "Back";
@@ -839,6 +1084,30 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void openNativePlayer(final String streamUrl, final String title, final String subtitle, final boolean isLive) {
             openNativePlayerUi(streamUrl, title, subtitle, isLive);
+        }
+
+        @JavascriptInterface
+        public void setLiveChannelList(final String jsonArray, final int currentIdx) {
+            populateLiveChannelDrawer(jsonArray, currentIdx);
+        }
+
+        @JavascriptInterface
+        public void updateLiveSubtitle(final String subtitle) {
+            runOnUiThread(() -> {
+                if (osdSubtitleView != null && subtitle != null) {
+                    osdSubtitleView.setText(subtitle);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void expandMiniPlayer() {
+            expandMiniPlayerToFullscreen();
+        }
+
+        @JavascriptInterface
+        public void closeMiniPlayer() {
+            closeNativePlayer();
         }
     }
 

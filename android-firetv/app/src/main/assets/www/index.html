@@ -196,12 +196,37 @@
             <div class="catalog-toolbar">
               <div>
                 <h2 id="live-current-cat-title" class="catalog-title">Canais ao Vivo</h2>
-                <p id="live-current-cat-sub" class="catalog-sub">Selecione um canal para reprodução imediata em tela limpa</p>
+                <p id="live-current-cat-sub" class="catalog-sub">Selecione um canal para assistir • Aperte VOLTAR no vídeo para Mini Player</p>
               </div>
               <div class="toolbar-search">
-                <input id="live-filter-input" type="text" data-focusable="true" placeholder="Filtrar canal nesta categoria..." />
+                <input id="live-filter-input" type="text" data-focusable="true" placeholder="Filtrar canal..." />
               </div>
             </div>
+
+            <!-- Painel de EPG (Guia de Programação) & Controle do Mini Player -->
+            <div id="live-epg-bar" class="live-epg-bar">
+              <div class="epg-info-col">
+                <div class="epg-channel-header">
+                  <span class="epg-tag">GUIA EPG</span>
+                  <strong id="epg-channel-title">Selecione ou passe por um canal para ver a programação</strong>
+                </div>
+                <div class="epg-programs-row">
+                  <div class="epg-prog-item">
+                    <span class="epg-prog-label">AGORA:</span>
+                    <span id="epg-now-text" class="epg-prog-title">Programação ao vivo disponível</span>
+                  </div>
+                  <div class="epg-prog-item">
+                    <span class="epg-prog-label">A SEGUIR:</span>
+                    <span id="epg-next-text" class="epg-prog-title">--</span>
+                  </div>
+                </div>
+              </div>
+              <div id="pip-controls-box" class="pip-controls-box hidden">
+                <button id="btn-pip-expand" type="button" class="btn-tv-white" data-focusable="true">⛶ Tela Cheia</button>
+                <button id="btn-pip-stop" type="button" class="btn-tv-danger" data-focusable="true">✕ Fechar Mini Player</button>
+              </div>
+            </div>
+
             <div id="live-channels-grid" class="live-channels-grid"></div>
             <div id="live-load-more-wrap" class="load-more-wrap hidden">
               <button id="btn-live-load-more" type="button" class="btn-tv-glass" data-focusable="true">Carregar mais canais</button>
@@ -419,8 +444,17 @@
           <span id="osd-category-pill" class="osd-meta-pill">TV ao Vivo</span>
         </div>
         <div class="osd-top-right">
-          <span class="osd-back-hint">Aperte <strong>VOLTAR</strong> para limpar a tela</span>
+          <span class="osd-back-hint">Aperte <strong>VOLTAR</strong> para limpar a tela (2x para Mini Player na TV)</span>
         </div>
+      </div>
+
+      <!-- Lista Rápida de Canais + EPG no Player (Abre ao apertar OK na TV ao Vivo) -->
+      <div id="osd-channel-drawer" class="osd-channel-drawer hidden">
+        <div class="osd-drawer-header">
+          <strong>Canais da Categoria</strong>
+          <span id="osd-drawer-epg" class="osd-drawer-epg">EPG: Programação ao Vivo</span>
+        </div>
+        <div id="osd-drawer-list" class="osd-drawer-list"></div>
       </div>
 
       <!-- Painel inferior flutuante em vidro fosco (Apple TV Glass Sheet) -->
@@ -445,36 +479,36 @@
           </div>
         </div>
 
-        <!-- Botões de Opções do Player -->
+        <!-- Botões de Opções do Player (Ícones Monocromáticos Limpos) -->
         <div class="osd-controls-row">
           <!-- Botões para TV ao Vivo -->
           <button id="btn-osd-prev-ch" type="button" class="osd-btn" data-focusable="true" title="Canal Anterior">
-            <span>⏮ Canal Ant.</span>
+            <span>|◀ Canal Ant.</span>
           </button>
 
           <!-- Botões para VOD (-10s) -->
-          <button id="btn-osd-rw" type="button" class="osd-btn hidden" data-focusable="true" title="Voltar 10s">
-            <span>↺ -10s</span>
+          <button id="btn-osd-rw" type="button" class="osd-btn hidden" data-focusable="true" title="Voltar 15s">
+            <span>↺ -15s</span>
           </button>
 
-          <!-- Play / Pause Principal -->
+          <!-- Play / Pause Principal (Sem emoji laranja) -->
           <button id="btn-osd-playpause" type="button" class="osd-btn osd-btn-primary" data-focusable="true">
-            <span id="osd-playpause-label">⏸ Pausar</span>
+            <span id="osd-playpause-label">❚❚ Pausar</span>
           </button>
 
           <!-- Botões para VOD (+10s) -->
-          <button id="btn-osd-ff" type="button" class="osd-btn hidden" data-focusable="true" title="Avançar 10s">
-            <span>↻ +10s</span>
+          <button id="btn-osd-ff" type="button" class="osd-btn hidden" data-focusable="true" title="Avançar 15s">
+            <span>↻ +15s</span>
           </button>
 
           <!-- Botões para TV ao Vivo (Próximo Canal) -->
           <button id="btn-osd-next-ch" type="button" class="osd-btn" data-focusable="true" title="Próximo Canal">
-            <span>⏭ Próx. Canal</span>
+            <span>▶| Próx. Canal</span>
           </button>
 
           <!-- Botão Próximo Episódio (Séries) -->
           <button id="btn-osd-next-ep" type="button" class="osd-btn hidden" data-focusable="true">
-            <span>⏭ Próx. Episódio</span>
+            <span>▶| Próx. Episódio</span>
           </button>
 
           <!-- Favoritar -->
