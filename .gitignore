@@ -1,0 +1,9 @@
+node_modules/
+.env
+.env.*
+android-firetv/.gradle/
+android-firetv/build/
+android-firetv/app/build/
+android-firetv/local.properties
+dist/AppleTV-IPTV-FireTV.apk
+*.log

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>KS TV-Stream — Fire TV 4K</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./vendor/hls.min.js"></script>
+</head>
+<body>
+  <!-- Dynamic Ambient Background (Apple TV+ style) -->
+  <div id="ambient-bg" class="ambient-bg">
+    <div id="ambient-image" class="ambient-image"></div>
+    <div class="ambient-vignette"></div>
+  </div>
+
+  <!-- ====================================================================
+       1. TELA DE LOGIN (3 Opções do PDF: Xtream, Acesso Rápido Core, M3U)
+       ==================================================================== -->
+  <section id="login-screen" class="screen login-screen active">
+    <div class="login-container">
+      <div class="login-brand">
+        <div class="apple-tv-logo">
+          <span class="tv-text">KS TV-Stream</span>
+          <span class="plus-badge">4K</span>
+        </div>
+        <p class="login-subtitle">Interface minimalista de alta performance para Fire TV Stick 4K</p>
+      </div>
+
+      <!-- Seletor de Modo de Login (Igual aos apps de exemplo do PDF) -->
+      <div class="login-tabs" role="tablist">
+        <button type="button" class="login-tab active" data-focusable="true" data-login-mode="xtream">
+          <span class="tab-title">Servidor + Usuário</span>
+          <span class="tab-sub">Lord Play • XCIPTV • IBO</span>
+        </button>
+        <button type="button" class="login-tab" data-focusable="true" data-login-mode="core">
+          <span class="tab-title">Acesso Rápido Core</span>
+          <span class="tab-sub">Core Gold • Navegador • STB</span>
+        </button>
+        <button type="button" class="login-tab" data-focusable="true" data-login-mode="m3u">
+          <span class="tab-title">Lista M3U / URL</span>
+          <span class="tab-sub">SSIPTV • Smart IPTV • 9Xtream</span>
+        </button>
+      </div>
+
+      <form id="login-form" class="login-card" autocomplete="off">
+        <!-- MODO 1: XTREAM CODES (Servidor + Usuário + Senha) -->
+        <div id="login-panel-xtream" class="login-panel active">
+          <div class="field-row two-cols">
+            <div class="field-group">
+              <label for="xtream-name">Nome do Perfil</label>
+              <input id="xtream-name" type="text" data-focusable="true" value="KS TV-Stream" placeholder="Ex: Minha Lista" />
+            </div>
+            <div class="field-group">
+              <label for="xtream-server">Servidor (URL)</label>
+              <input id="xtream-server" type="text" data-focusable="true" value="" placeholder="http://seu-servidor.com" />
+            </div>
+          </div>
+          <div class="field-row two-cols">
+            <div class="field-group">
+              <label for="xtream-user">Usuário</label>
+              <input id="xtream-user" type="text" data-focusable="true" value="" placeholder="Digite seu usuário" />
+            </div>
+            <div class="field-group">
+              <label for="xtream-pass">Senha</label>
+              <input id="xtream-pass" type="password" data-focusable="true" value="" placeholder="Digite sua senha" />
+            </div>
+          </div>
+        </div>
+
+        <!-- MODO 2: ACESSO RÁPIDO (Servidor Salvo + Usuário + Senha) -->
+        <div id="login-panel-core" class="login-panel">
+          <div class="field-group">
+            <label for="core-server">Servidor DNS / IP</label>
+            <input id="core-server" type="text" data-focusable="true" value="" placeholder="http://seu-servidor.com ou IP" />
+          </div>
+          <div class="field-row two-cols">
+            <div class="field-group">
+              <label for="core-user">Usuário</label>
+              <input id="core-user" type="text" data-focusable="true" value="" placeholder="Digite seu usuário" />
+            </div>
+            <div class="field-group">
+              <label for="core-pass">Senha</label>
+              <input id="core-pass" type="password" data-focusable="true" value="" placeholder="Digite sua senha" />
+            </div>
+          </div>
+        </div>
+
+        <!-- MODO 3: LISTA M3U / URL (Igual IBO Player Pro, SSIPTV, Smart IPTV) -->
+        <div id="login-panel-m3u" class="login-panel">
+          <div class="field-group">
+            <label>Formato da Lista</label>
+            <div class="preset-pills">
+              <button type="button" class="preset-pill active" data-focusable="true" data-m3u-type="m3u_plus">
+                M3U Plus (Padrão)
+              </button>
+              <button type="button" class="preset-pill" data-focusable="true" data-m3u-type="ssiptv">
+                Lista SSIPTV
+              </button>
+              <button type="button" class="preset-pill" data-focusable="true" data-m3u-type="smart">
+                Lista Smart IPTV
+              </button>
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="m3u-url">URL da Lista / M3U</label>
+            <input id="m3u-url" type="text" data-focusable="true" value="" placeholder="http://seu-servidor.com/playlist/usuario/senha/m3u_plus" />
+          </div>
+        </div>
+
+        <div id="login-error" class="login-error hidden"></div>
+
+        <div class="login-actions">
+          <button id="btn-login-submit" type="submit" class="btn-primary-tv" data-focusable="true">
+            <span id="btn-login-text">Entrar agora</span>
+          </button>
+        </div>
+
+        <div class="login-footer-hint">
+          <span>Dica Fire TV: Use as setas do controle para navegar e o botão central <strong>OK</strong> para entrar.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ====================================================================
+       2. APLICATIVO PRINCIPAL (INTERFACE MINIMALISTA APPLE TV / tvOS)
+       ==================================================================== -->
+  <section id="app-screen" class="screen app-screen">
+    <!-- Barra de Navegação Flutuante Estilo Apple TV (Glass Pill) -->
+    <header class="tvos-header">
+      <div class="tvos-brand">
+        <span class="tv-text">KS TV-Stream</span>
+      </div>
+
+      <nav class="tvos-nav-pill" role="navigation">
+        <button type="button" class="nav-item active" data-focusable="true" data-section="home">Início</button>
+        <button type="button" class="nav-item" data-focusable="true" data-section="live">TV ao Vivo</button>
+        <button type="button" class="nav-item" data-focusable="true" data-section="movies">Filmes</button>
+        <button type="button" class="nav-item" data-focusable="true" data-section="series">Séries</button>
+        <button type="button" class="nav-item" data-focusable="true" data-section="favorites">Favoritos</button>
+        <button type="button" class="nav-item" data-focusable="true" data-section="search">Busca</button>
+        <button type="button" class="nav-item" data-focusable="true" data-section="account">Conta</button>
+      </nav>
+
+      <div class="tvos-status">
+        <span id="account-badge" class="status-pill">Ativo</span>
+        <span id="clock-display" class="clock-display">--:--</span>
+      </div>
+    </header>
+
+    <!-- Área de Conteúdo Principal -->
+    <main id="main-content" class="tvos-main">
+      <!-- ABA 1: INÍCIO (Apple TV+ Showcase & Continue Watching) -->
+      <div id="section-home" class="content-section active">
+        <div id="hero-banner" class="hero-banner">
+          <div class="hero-backdrop-wrap">
+            <img id="hero-backdrop-img" class="hero-backdrop-img" src="" alt="" />
+            <div class="hero-gradient"></div>
+          </div>
+          <div class="hero-content">
+            <div class="hero-badges">
+              <span id="hero-badge-type" class="badge-glass">KS TV-Stream • Destaque</span>
+              <span id="hero-badge-meta" class="badge-outline">4K UHD • HDR</span>
+            </div>
+            <h1 id="hero-title" class="hero-title">Carregando catálogo...</h1>
+            <p id="hero-desc" class="hero-desc">Navegue pelos canais ao vivo, filmes em 4K e séries com a fluidez da Apple TV.</p>
+            <div class="hero-buttons">
+              <button id="btn-hero-play" type="button" class="btn-tv-white" data-focusable="true">
+                <span>▶ Assistir Agora</span>
+              </button>
+              <button id="btn-hero-live" type="button" class="btn-tv-glass" data-focusable="true">
+                <span>Abrir TV ao Vivo</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="home-rows" class="home-rows">
+          <!-- Trilhos horizontais gerados dinamicamente -->
+        </div>
+      </div>
+
+      <!-- ABA 2: TV AO VIVO (Split-View Ultra Rápido: Categorias + Canais) -->
+      <div id="section-live" class="content-section">
+        <div class="catalog-layout">
+          <aside class="category-sidebar">
+            <div class="sidebar-header">
+              <h2>Categorias</h2>
+              <span id="live-cat-count" class="count-pill">0</span>
+            </div>
+            <div id="live-categories-list" class="category-list"></div>
+          </aside>
+
+          <section class="catalog-main">
+            <div class="catalog-toolbar">
+              <div>
+                <h2 id="live-current-cat-title" class="catalog-title">Canais ao Vivo</h2>
+                <p id="live-current-cat-sub" class="catalog-sub">Selecione um canal para reprodução imediata em tela limpa</p>
+              </div>
+              <div class="toolbar-search">
+                <input id="live-filter-input" type="text" data-focusable="true" placeholder="Filtrar canal nesta categoria..." />
+              </div>
+            </div>
+            <div id="live-channels-grid" class="live-channels-grid"></div>
+            <div id="live-load-more-wrap" class="load-more-wrap hidden">
+              <button id="btn-live-load-more" type="button" class="btn-tv-glass" data-focusable="true">Carregar mais canais</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ABA 3: FILMES (Categorias + Pôsteres 2:3 estilo Apple TV) -->
+      <div id="section-movies" class="content-section">
+        <div class="catalog-layout">
+          <aside class="category-sidebar">
+            <div class="sidebar-header">
+              <h2>Gêneros</h2>
+              <span id="movies-cat-count" class="count-pill">0</span>
+            </div>
+            <div id="movies-categories-list" class="category-list"></div>
+          </aside>
+
+          <section class="catalog-main">
+            <div class="catalog-toolbar">
+              <div>
+                <h2 id="movies-current-cat-title" class="catalog-title">Filmes</h2>
+                <p id="movies-current-cat-sub" class="catalog-sub">Catálogo sob demanda</p>
+              </div>
+              <div class="toolbar-search">
+                <input id="movies-filter-input" type="text" data-focusable="true" placeholder="Filtrar filmes..." />
+              </div>
+            </div>
+            <div id="movies-grid" class="poster-grid"></div>
+            <div id="movies-load-more-wrap" class="load-more-wrap hidden">
+              <button id="btn-movies-load-more" type="button" class="btn-tv-glass" data-focusable="true">Mostrar mais filmes</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ABA 4: SÉRIES (Categorias + Pôsteres 2:3 estilo Apple TV) -->
+      <div id="section-series" class="content-section">
+        <div class="catalog-layout">
+          <aside class="category-sidebar">
+            <div class="sidebar-header">
+              <h2>Plataformas</h2>
+              <span id="series-cat-count" class="count-pill">0</span>
+            </div>
+            <div id="series-categories-list" class="category-list"></div>
+          </aside>
+
+          <section class="catalog-main">
+            <div class="catalog-toolbar">
+              <div>
+                <h2 id="series-current-cat-title" class="catalog-title">Séries</h2>
+                <p id="series-current-cat-sub" class="catalog-sub">Temporadas completas</p>
+              </div>
+              <div class="toolbar-search">
+                <input id="series-filter-input" type="text" data-focusable="true" placeholder="Filtrar séries..." />
+              </div>
+            </div>
+            <div id="series-grid" class="poster-grid"></div>
+            <div id="series-load-more-wrap" class="load-more-wrap hidden">
+              <button id="btn-series-load-more" type="button" class="btn-tv-glass" data-focusable="true">Mostrar mais séries</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ABA 5: FAVORITOS -->
+      <div id="section-favorites" class="content-section">
+        <div class="single-page-wrap">
+          <div class="catalog-toolbar">
+            <div>
+              <h2 class="catalog-title">Meus Favoritos</h2>
+              <p class="catalog-sub">Seus canais, filmes e séries salvos para acesso rápido</p>
+            </div>
+          </div>
+          <div id="favorites-grid" class="poster-grid"></div>
+        </div>
+      </div>
+
+      <!-- ABA 6: BUSCA GLOBAL -->
+      <div id="section-search" class="content-section">
+        <div class="single-page-wrap">
+          <div class="search-hero-box">
+            <input id="global-search-input" type="text" data-focusable="true" placeholder="Digite o nome do canal, filme ou série..." />
+            <button id="btn-global-search" type="button" class="btn-tv-white" data-focusable="true">Buscar</button>
+          </div>
+          <div id="search-status" class="catalog-sub" style="margin-bottom: 18px;">
+            Busque instantaneamente nas categorias carregadas ou pesquise em todo o servidor.
+          </div>
+          <div id="search-results-grid" class="poster-grid"></div>
+        </div>
+      </div>
+
+      <!-- ABA 7: CONTA & OPÇÕES -->
+      <div id="section-account" class="content-section">
+        <div class="single-page-wrap account-wrap">
+          <div class="account-card">
+            <div class="account-card-header">
+              <div>
+                <span class="badge-glass">Sessão Conectada</span>
+                <h2 id="acc-profile-name" style="margin-top: 8px;">Core Play 4K</h2>
+              </div>
+              <span id="acc-status-badge" class="status-pill">Ativo</span>
+            </div>
+
+            <div class="account-stats-grid">
+              <div class="stat-box">
+                <span class="stat-label">Servidor</span>
+                <strong id="acc-server-url">--</strong>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Usuário</span>
+                <strong id="acc-username">--</strong>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Expira em</span>
+                <strong id="acc-exp-date">--</strong>
+              </div>
+              <div class="stat-box">
+                <span class="stat-label">Conexões</span>
+                <strong id="acc-connections">0 / 1</strong>
+              </div>
+            </div>
+
+            <div class="account-actions">
+              <button id="btn-refresh-cache" type="button" class="btn-tv-glass" data-focusable="true">
+                Atualizar Catálogo (Limpar Cache)
+              </button>
+              <button id="btn-switch-login" type="button" class="btn-tv-danger" data-focusable="true">
+                Trocar Lista / Opções de Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- ====================================================================
+       3. MODAL DE DETALHES (FILME OU SÉRIE / TEMPORADAS & EPISÓDIOS)
+       ==================================================================== -->
+  <div id="details-modal" class="details-modal hidden">
+    <div class="details-backdrop-wrap">
+      <img id="details-backdrop" class="details-backdrop" src="" alt="" />
+      <div class="details-vignette"></div>
+    </div>
+
+    <div class="details-container">
+      <div class="details-top">
+        <img id="details-poster" class="details-poster" src="" alt="" />
+        <div class="details-info">
+          <div class="hero-badges">
+            <span id="details-badge-type" class="badge-glass">Filme</span>
+            <span id="details-badge-year" class="badge-outline">2026</span>
+            <span id="details-badge-rating" class="badge-outline">★ 8.0</span>
+          </div>
+          <h1 id="details-title" class="details-title">Título</h1>
+          <p id="details-meta" class="details-meta"></p>
+          <p id="details-plot" class="details-plot"></p>
+
+          <div class="details-actions">
+            <button id="btn-details-play" type="button" class="btn-tv-white" data-focusable="true">
+              ▶ Assistir Agora
+            </button>
+            <button id="btn-details-fav" type="button" class="btn-tv-glass" data-focusable="true">
+              ★ Favoritar
+            </button>
+            <button id="btn-details-close" type="button" class="btn-tv-glass" data-focusable="true">
+              Voltar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção de Temporadas e Episódios (Visível apenas para Séries) -->
+      <div id="series-episodes-section" class="series-episodes-section hidden">
+        <div id="season-selector" class="season-selector"></div>
+        <div id="episodes-list" class="episodes-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       4. PLAYER DE VÍDEO "CLEAR" (TV AO VIVO, FILMES E SÉRIES)
+       - Ao apertar VOLTAR quando o OSD (opções) está visível: SOME o OSD da tela!
+       - Ao apertar VOLTAR quando a tela já está limpa: Sai do player.
+       ==================================================================== -->
+  <div id="player-overlay" class="player-overlay hidden">
+    <!-- Elemento de vídeo HTML5 / HLS.js (no APK nativo, o ExoPlayer roda na camada de hardware e este fica transparente) -->
+    <video id="video-element" class="video-element" playsinline></video>
+
+    <!-- Indicador sutil de carregamento (some assim que o 1º frame toca) -->
+    <div id="player-Spinner" class="player-spinner hidden">
+      <div class="apple-spinner"></div>
+      <span id="player-loading-text">Conectando ao sinal...</span>
+    </div>
+
+    <!-- Mensagem de erro caso um canal específico esteja offline -->
+    <div id="player-error-box" class="player-error-box hidden">
+      <h3 id="player-error-title">Sinal indisponível no momento</h3>
+      <p id="player-error-desc">Tentando reconectar ou selecione outro canal.</p>
+      <div class="player-error-actions">
+        <button id="btn-player-retry" type="button" class="btn-tv-white" data-focusable="true">Tentar Novamente</button>
+        <button id="btn-player-exit-err" type="button" class="btn-tv-glass" data-focusable="true">Sair do Vídeo</button>
+      </div>
+    </div>
+
+    <!-- OSD (OPÇÕES DO PLAYER) ESTILO APPLE TV
+         Fica oculto (clear) durante a reprodução e some imediatamente ao apertar VOLTAR! -->
+    <div id="player-osd" class="player-osd">
+      <!-- Topo minimalista -->
+      <div class="osd-top-bar">
+        <div class="osd-top-left">
+          <span id="osd-live-badge" class="osd-live-badge">● AO VIVO</span>
+          <span id="osd-category-pill" class="osd-meta-pill">TV ao Vivo</span>
+        </div>
+        <div class="osd-top-right">
+          <span class="osd-back-hint">Aperte <strong>VOLTAR</strong> para limpar a tela</span>
+        </div>
+      </div>
+
+      <!-- Painel inferior flutuante em vidro fosco (Apple TV Glass Sheet) -->
+      <div class="osd-bottom-sheet">
+        <div class="osd-media-header">
+          <img id="osd-logo" class="osd-logo hidden" src="" alt="" />
+          <div class="osd-titles">
+            <h2 id="osd-title">Nome do Canal / Filme</h2>
+            <p id="osd-subtitle">Reprodução em Alta Definição</p>
+          </div>
+          <div id="osd-time-display" class="osd-time-display hidden">
+            <span id="osd-time-current">00:00</span>
+            <span class="osd-time-sep">/</span>
+            <span id="osd-time-total">00:00</span>
+          </div>
+        </div>
+
+        <!-- Barra de Progresso (apenas para Filmes e Séries) -->
+        <div id="osd-progress-wrap" class="osd-progress-wrap hidden" data-focusable="true" tabindex="0">
+          <div class="osd-progress-track">
+            <div id="osd-progress-fill" class="osd-progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Botões de Opções do Player -->
+        <div class="osd-controls-row">
+          <!-- Botões para TV ao Vivo -->
+          <button id="btn-osd-prev-ch" type="button" class="osd-btn" data-focusable="true" title="Canal Anterior">
+            <span>⏮ Canal Ant.</span>
+          </button>
+
+          <!-- Botões para VOD (-10s) -->
+          <button id="btn-osd-rw" type="button" class="osd-btn hidden" data-focusable="true" title="Voltar 10s">
+            <span>↺ -10s</span>
+          </button>
+
+          <!-- Play / Pause Principal -->
+          <button id="btn-osd-playpause" type="button" class="osd-btn osd-btn-primary" data-focusable="true">
+            <span id="osd-playpause-label">⏸ Pausar</span>
+          </button>
+
+          <!-- Botões para VOD (+10s) -->
+          <button id="btn-osd-ff" type="button" class="osd-btn hidden" data-focusable="true" title="Avançar 10s">
+            <span>↻ +10s</span>
+          </button>
+
+          <!-- Botões para TV ao Vivo (Próximo Canal) -->
+          <button id="btn-osd-next-ch" type="button" class="osd-btn" data-focusable="true" title="Próximo Canal">
+            <span>⏭ Próx. Canal</span>
+          </button>
+
+          <!-- Botão Próximo Episódio (Séries) -->
+          <button id="btn-osd-next-ep" type="button" class="osd-btn hidden" data-focusable="true">
+            <span>⏭ Próx. Episódio</span>
+          </button>
+
+          <!-- Favoritar -->
+          <button id="btn-osd-fav" type="button" class="osd-btn" data-focusable="true">
+            <span id="osd-fav-label">☆ Favoritar</span>
+          </button>
+
+          <!-- Ajuste de Tela (Fit / Fill) -->
+          <button id="btn-osd-aspect" type="button" class="osd-btn" data-focusable="true">
+            <span id="osd-aspect-label">⛶ Tela: Padrão</span>
+          </button>
+
+          <!-- Ocultar Opções (Deixar tela Clear) -->
+          <button id="btn-osd-hide" type="button" class="osd-btn" data-focusable="true">
+            <span>✕ Ocultar Opções</span>
+          </button>
+
+          <!-- Sair do Vídeo -->
+          <button id="btn-osd-close" type="button" class="osd-btn osd-btn-close" data-focusable="true">
+            <span>Sair do Player</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

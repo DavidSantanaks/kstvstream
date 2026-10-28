@@ -1,0 +1,1385 @@
+/* ==========================================================================
+   KS TV-Stream — Apple TV (tvOS) Minimalist Design System
+   Optimized for 60 FPS on Fire TV Stick 4K (Chromium 78+) & Web
+   ========================================================================== */
+
+:root {
+  --bg-deep: #07080d;
+  --bg-card: #131620;
+  --bg-card-hover: #1c202e;
+  --bg-surface: rgba(20, 23, 33, 0.94);
+  --bg-pill: rgba(26, 30, 42, 0.95);
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-focus: #ffffff;
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a6b8;
+  --text-muted: #6e7385;
+  --accent-white: #ffffff;
+  --accent-blue: #0a84ff;
+  --accent-live: #ff3b30;
+  --accent-green: #30d158;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden,
+img[src=""],
+img:not([src]) {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Lightweight Ambient Background (Zero GPU Blur Lag)
+   ========================================================================== */
+.ambient-bg {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 18% 12%, #141d33 0%, #07080d 65%);
+}
+
+.ambient-image,
+.ambient-vignette {
+  display: none;
+}
+
+/* ==========================================================================
+   Ultra-Fast Apple TV Focus State (60 FPS on Fire TV Stick)
+   ========================================================================== */
+[data-focusable="true"] {
+  outline: none;
+  transition: transform 0.1s ease-out, border-color 0.1s ease-out, background-color 0.1s ease-out;
+}
+
+[data-focusable="true"].tv-focused,
+[data-focusable="true"]:focus {
+  transform: scale(1.03);
+  border-color: var(--border-focus) !important;
+  box-shadow: 0 0 0 2.5px #ffffff, 0 8px 20px rgba(0, 0, 0, 0.7) !important;
+  z-index: 10;
+}
+
+/* ==========================================================================
+   Screen Management
+   ========================================================================== */
+.screen {
+  position: relative;
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  display: none;
+}
+
+.screen.active {
+  display: flex;
+}
+
+/* ==========================================================================
+   1. LOGIN SCREEN
+   ========================================================================== */
+.login-screen {
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 740px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.login-brand {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.apple-tv-logo {
+  display: inline-flex;
+  align-items: center;
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.plus-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--border-subtle);
+  margin-left: 10px;
+}
+
+.login-subtitle {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Login Mode Tabs */
+.login-tabs {
+  display: flex;
+  width: 100%;
+  padding: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.login-tab {
+  flex: 1;
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.login-tab + .login-tab {
+  margin-left: 8px;
+}
+
+.login-tab .tab-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.login-tab .tab-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.login-tab.active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Login Form Card */
+.login-card {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+}
+
+.login-panel {
+  display: none;
+  flex-direction: column;
+}
+
+.login-panel.active {
+  display: flex;
+}
+
+.field-row.two-cols {
+  display: flex;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.field-row.two-cols > .field-group {
+  flex: 1;
+}
+
+.field-row.two-cols > .field-group + .field-group {
+  margin-left: 16px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+.field-group label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.field-group input {
+  width: 100%;
+  background: #0d1017;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.preset-pills {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.preset-pill {
+  flex: 1;
+  min-width: 150px;
+  padding: 10px 12px;
+  margin-right: 8px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-sm);
+  background: #0d1017;
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preset-pill.active {
+  background: rgba(10, 132, 255, 0.25);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+.login-error {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 59, 48, 0.18);
+  border: 1px solid rgba(255, 59, 48, 0.5);
+  color: #ff8a80;
+  font-size: 13px;
+  text-align: center;
+}
+
+.login-actions {
+  margin-top: 10px;
+}
+
+.btn-primary-tv {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--radius-md);
+  background: var(--accent-white);
+  color: #000;
+  border: 2px solid transparent;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-footer-hint {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   2. MAIN APP SCREEN & TOP NAVIGATION BAR
+   ========================================================================== */
+.app-screen {
+  flex-direction: column;
+}
+
+.tvos-header {
+  height: 70px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 20;
+  flex-shrink: 0;
+}
+
+.tvos-brand {
+  display: flex;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.tvos-nav-pill {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+  background: var(--bg-pill);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+}
+
+.nav-item {
+  background: transparent;
+  border: 1.5px solid transparent;
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  margin: 0 2px;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.nav-item.active {
+  background: #ffffff;
+  color: #07080d;
+  font-weight: 700;
+}
+
+.tvos-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  margin-right: 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(48, 209, 88, 0.16);
+  border: 1px solid rgba(48, 209, 88, 0.4);
+  color: #4cd964;
+}
+
+.clock-display {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ==========================================================================
+   Main Content Area & Sections
+   ========================================================================== */
+.tvos-main {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.content-section {
+  width: 100%;
+  height: 100%;
+  display: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 36px 40px;
+}
+
+.content-section.active {
+  display: block;
+}
+
+.content-section::-webkit-scrollbar,
+.category-list::-webkit-scrollbar,
+.home-row-track::-webkit-scrollbar,
+.episodes-list::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.content-section::-webkit-scrollbar-thumb,
+.category-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 99px;
+}
+
+/* ==========================================================================
+   HOME SECTION: Hero Banner & Horizontal Shelves
+   ========================================================================== */
+.hero-banner {
+  position: relative;
+  width: 100%;
+  height: 270px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: flex-end;
+  background: #101420;
+}
+
+.hero-backdrop-wrap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.hero-backdrop-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  opacity: 0.55;
+}
+
+.hero-gradient {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(90deg, #07080d 0%, rgba(7, 8, 13, 0.8) 50%, rgba(7, 8, 13, 0.2) 100%),
+              linear-gradient(180deg, rgba(7, 8, 13, 0.1) 0%, #07080d 100%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+  padding: 24px 30px;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-badges {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.badge-glass {
+  padding: 4px 10px;
+  margin-right: 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-outline {
+  padding: 3px 9px;
+  margin-right: 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 14px;
+  max-height: 38px;
+  overflow: hidden;
+}
+
+.hero-buttons {
+  display: flex;
+  align-items: center;
+}
+
+.hero-buttons > button + button {
+  margin-left: 12px;
+}
+
+.btn-tv-white {
+  padding: 10px 22px;
+  border-radius: var(--radius-pill);
+  background: #ffffff;
+  color: #050608;
+  border: 2px solid transparent;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-tv-glass {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  background: #1b2030;
+  color: var(--text-primary);
+  border: 1.5px solid var(--border-subtle);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-tv-danger {
+  padding: 10px 20px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 59, 48, 0.2);
+  color: #ff6961;
+  border: 1.5px solid rgba(255, 59, 48, 0.45);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Horizontal Shelves on Home */
+.home-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 22px;
+}
+
+.home-row-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+
+.home-row-track {
+  display: flex;
+  overflow-x: auto;
+  padding: 8px 6px 14px;
+}
+
+.home-row-track > * + * {
+  margin-left: 14px;
+}
+
+/* ==========================================================================
+   SPLIT-VIEW CATALOG LAYOUT (Categories Left + Content Right)
+   ========================================================================== */
+.catalog-layout {
+  display: flex;
+  height: calc(100vh - 86px);
+}
+
+.category-sidebar {
+  width: 255px;
+  flex-shrink: 0;
+  margin-right: 22px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-header h2 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.count-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+.category-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cat-btn {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1.5px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.cat-btn.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.catalog-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 4px 8px 40px 4px;
+}
+
+.catalog-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.catalog-title {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.catalog-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.toolbar-search input {
+  width: 240px;
+  padding: 9px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   LIVE TV CARDS
+   ========================================================================== */
+.live-channels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
+  grid-gap: 12px;
+  gap: 12px;
+}
+
+.channel-card {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  height: 70px;
+}
+
+.channel-logo-box {
+  width: 46px;
+  height: 46px;
+  margin-right: 12px;
+  border-radius: 10px;
+  background: #0c0e14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.channel-logo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 3px;
+}
+
+.channel-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-num-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.channel-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.live-dot {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff453a;
+}
+
+.channel-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   POSTER CARDS (Fixed Height for Chromium 78 compatibility & Zero Reflow)
+   ========================================================================== */
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-gap: 16px;
+  gap: 16px;
+}
+
+.poster-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  color: var(--text-primary);
+  width: 100%;
+}
+
+.home-row-track .poster-card {
+  width: 155px;
+  flex-shrink: 0;
+}
+
+.home-row-track .channel-card {
+  width: 240px;
+  flex-shrink: 0;
+}
+
+.poster-thumb-wrap {
+  position: relative;
+  width: 100%;
+  height: 215px;
+  background: #0c0e14;
+  overflow: hidden;
+}
+
+.poster-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.poster-rating-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.82);
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd60a;
+}
+
+.poster-caption {
+  padding: 9px 10px;
+}
+
+.poster-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.poster-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.load-more-wrap {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   SEARCH & ACCOUNT SECTIONS
+   ========================================================================== */
+.single-page-wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+.search-hero-box {
+  display: flex;
+  margin-bottom: 16px;
+}
+
+.search-hero-box input {
+  flex: 1;
+  margin-right: 12px;
+  padding: 13px 18px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.account-wrap {
+  max-width: 700px;
+  padding-top: 16px;
+}
+
+.account-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.account-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.account-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-gap: 12px;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-box {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: #0d1017;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.account-actions > button + button {
+  margin-left: 12px;
+}
+
+/* ==========================================================================
+   3. DETAILS MODAL (MOVIES & SERIES EPISODES)
+   ========================================================================== */
+.details-modal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  background: var(--bg-deep);
+  overflow-y: auto;
+  padding: 32px 44px;
+}
+
+.details-backdrop-wrap {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.details-backdrop {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.22;
+}
+
+.details-vignette {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(90deg, #07080d 20%, rgba(7, 8, 13, 0.75) 100%);
+}
+
+.details-container {
+  position: relative;
+  z-index: 2;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.details-top {
+  display: flex;
+  align-items: flex-start;
+}
+
+.details-poster {
+  width: 195px;
+  height: 290px;
+  margin-right: 28px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: #12141c;
+  flex-shrink: 0;
+}
+
+.details-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.details-title {
+  font-size: 30px;
+  font-weight: 800;
+  margin-top: 6px;
+  margin-bottom: 6px;
+}
+
+.details-meta {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.details-plot {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #dcdfe8;
+  max-width: 760px;
+  margin-bottom: 16px;
+}
+
+.details-actions {
+  display: flex;
+  align-items: center;
+}
+
+.details-actions > button + button {
+  margin-left: 12px;
+}
+
+.series-episodes-section {
+  margin-top: 26px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 18px;
+}
+
+.season-selector {
+  display: flex;
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+
+.season-pill {
+  padding: 8px 16px;
+  margin-right: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.season-pill.active {
+  background: #fff;
+  color: #000;
+}
+
+.episodes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+  grid-gap: 12px;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.episode-card {
+  display: flex;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-subtle);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  align-items: center;
+}
+
+.episode-num-badge {
+  width: 40px;
+  height: 40px;
+  margin-right: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.episode-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.episode-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.episode-dur {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   4. WEB VIDEO PLAYER & OSD OVERLAY
+   ========================================================================== */
+.player-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-element {
+  width: 100vw;
+  height: 100vh;
+  object-fit: contain;
+  background: #000000;
+}
+
+.video-element.aspect-cover {
+  object-fit: cover;
+}
+
+.video-element.aspect-fill {
+  object-fit: fill;
+}
+
+.player-spinner {
+  position: absolute;
+  z-index: 102;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 24px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 17, 24, 0.88);
+  pointer-events: none;
+}
+
+.apple-spinner {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 10px;
+  border: 3px solid rgba(255, 255, 255, 0.22);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.player-error-box {
+  position: absolute;
+  z-index: 105;
+  background: #141722;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px 30px;
+  text-align: center;
+  max-width: 420px;
+}
+
+.player-error-box p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin: 8px 0 16px;
+}
+
+.player-error-actions {
+  display: flex;
+  justify-content: center;
+}
+
+.player-error-actions > button + button {
+  margin-left: 10px;
+}
+
+.player-osd {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 103;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 36px 28px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.65) 0%, transparent 25%, transparent 60%, rgba(0,0,0,0.85) 100%);
+  opacity: 1;
+}
+
+.player-osd.osd-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.osd-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.osd-top-left {
+  display: flex;
+  align-items: center;
+}
+
+.osd-live-badge {
+  padding: 5px 12px;
+  margin-right: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--accent-live);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.osd-meta-pill {
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(20, 23, 33, 0.9);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.osd-back-hint {
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(20, 23, 33, 0.9);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.osd-bottom-sheet {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  border-radius: 20px;
+  background: rgba(18, 21, 30, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  display: flex;
+  flex-direction: column;
+}
+
+.osd-media-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.osd-logo {
+  width: 44px;
+  height: 44px;
+  margin-right: 12px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: #0c0e14;
+  padding: 4px;
+}
+
+.osd-titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.osd-titles h2 {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osd-titles p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.osd-time-display {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.osd-time-sep {
+  margin: 0 4px;
+  color: var(--text-muted);
+}
+
+/* Interactive Progress Scrub Bar (Supports D-Pad Left/Right & Click) */
+.osd-progress-wrap {
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.osd-progress-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+
+.osd-progress-wrap.tv-focused .osd-progress-track {
+  height: 12px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.osd-progress-fill {
+  width: 0%;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 99px;
+}
+
+.osd-controls-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.osd-btn {
+  padding: 9px 15px;
+  margin-right: 8px;
+  margin-top: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.osd-btn-primary {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.osd-btn-close {
+  margin-left: auto;
+  margin-right: 0;
+  background: rgba(255, 59, 48, 0.2);
+  border-color: rgba(255, 59, 48, 0.4);
+  color: #ff8a80;
+}

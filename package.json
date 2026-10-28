@@ -1,0 +1,13 @@
+{
+  "name": "ks-tv-stream",
+  "version": "1.0.0",
+  "description": "KS TV-Stream — Player de IPTV Minimalista estilo Apple TV para Fire TV Stick 4K e Web",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "Engine": {
+    "node": ">=18.0.0"
+  }
+}
