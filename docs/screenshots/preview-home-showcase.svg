@@ -1,0 +1,259 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0a0d"/>
+      <stop offset="50%" stop-color="#0e0e14"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </linearGradient>
+
+    <linearGradient id="hero-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141829"/>
+      <stop offset="50%" stop-color="#1d1330"/>
+      <stop offset="100%" stop-color="#0a0d18"/>
+    </linearGradient>
+
+    <linearGradient id="hero-overlay" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#07070b" stop-opacity="0.96"/>
+      <stop offset="45%" stop-color="#07070b" stop-opacity="0.80"/>
+      <stop offset="80%" stop-color="#07070b" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#07070b" stop-opacity="0.05"/>
+    </linearGradient>
+
+    <linearGradient id="badge-4k-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#d4d4e0"/>
+    </linearGradient>
+
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+
+    <filter id="pill-shadow" x="-10%" y="-20%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <style>
+    .font { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+    .title { font-weight: 700; letter-spacing: -0.03em; }
+    .semibold { font-weight: 600; letter-spacing: -0.01em; }
+    .medium { font-weight: 500; }
+    .regular { font-weight: 400; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1280" height="720" fill="url(#bg-grad)"/>
+
+  <!-- Top Apple Navigation Bar -->
+  <g transform="translate(48, 22)">
+    <!-- Brand Glyph & Logo -->
+    <g transform="translate(0, 10)">
+      <rect x="0" y="0" width="28" height="28" rx="8" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <path d="M7 14 L14 7 L21 14 L14 21 Z" fill="none" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="14" cy="14" r="2.5" fill="#ffffff"/>
+      <text x="36" y="19" class="font title" font-size="19" fill="#ffffff">KS TV-Stream</text>
+    </g>
+
+    <!-- Floating Capsule Pill Navbar -->
+    <g transform="translate(360, 2)" filter="url(#pill-shadow)">
+      <rect x="0" y="0" width="460" height="42" rx="21" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+      <!-- Active Tab: Início -->
+      <rect x="5" y="4" width="76" height="34" rx="17" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+      <text x="43" y="25" text-anchor="middle" class="font semibold" font-size="13" fill="#ffffff">Início</text>
+      <!-- Other Tabs -->
+      <text x="122" y="25" text-anchor="middle" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">TV ao Vivo</text>
+      <text x="194" y="25" text-anchor="middle" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">Filmes</text>
+      <text x="256" y="25" text-anchor="middle" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">Séries</text>
+      <text x="325" y="25" text-anchor="middle" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">Favoritos</text>
+      <text x="388" y="25" text-anchor="middle" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">Busca</text>
+      <text x="435" y="25" text-anchor="middle" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">Conta</text>
+    </g>
+
+    <!-- Top Right Status & Clock -->
+    <g transform="translate(1080, 8)">
+      <rect x="0" y="4" width="70" height="26" rx="13" fill="rgba(48,209,88,0.15)" stroke="rgba(48,209,88,0.35)" stroke-width="1"/>
+      <circle cx="14" cy="17" r="3.5" fill="#30d158"/>
+      <text x="24" y="21" class="font semibold" font-size="11.5" fill="#30d158">Ativo</text>
+      <text x="84" y="22" class="font semibold" font-size="14.5" fill="rgba(235,235,245,0.85)">10:45</text>
+    </g>
+  </g>
+
+  <!-- Hero Showcase Banner (Simulated Original Series) -->
+  <g transform="translate(48, 86)" filter="url(#card-shadow)">
+    <!-- Container -->
+    <rect width="1184" height="320" rx="24" fill="url(#hero-grad)" stroke="rgba(255,255,255,0.14)" stroke-width="1"/>
+    
+    <!-- Abstract Cosmic Graphic (Simulated Backdrop) -->
+    <g opacity="0.65">
+      <circle cx="980" cy="140" r="130" fill="none" stroke="#5e5ce6" stroke-width="2" opacity="0.4"/>
+      <circle cx="980" cy="140" r="100" fill="none" stroke="#64d2ff" stroke-width="1.5" opacity="0.3"/>
+      <circle cx="980" cy="140" r="70" fill="none" stroke="#bf5af2" stroke-width="1" opacity="0.5"/>
+      <circle cx="820" cy="220" r="4" fill="#64d2ff" opacity="0.8"/>
+      <circle cx="1060" cy="60" r="3" fill="#ffffff" opacity="0.9"/>
+      <circle cx="1120" cy="190" r="2.5" fill="#ff9f0a" opacity="0.7"/>
+      <!-- Planetary Horizon Arc -->
+      <path d="M 640 320 Q 980 100 1184 320" fill="none" stroke="rgba(100,210,255,0.35)" stroke-width="3"/>
+    </g>
+
+    <!-- Gradient Overlay for Legibility -->
+    <rect width="1184" height="320" rx="24" fill="url(#hero-overlay)"/>
+
+    <!-- Hero Content -->
+    <g transform="translate(42, 38)">
+      <!-- Badges -->
+      <g>
+        <!-- 4K Badge -->
+        <rect x="0" y="0" width="62" height="22" rx="5" fill="url(#badge-4k-grad)"/>
+        <text x="31" y="15" text-anchor="middle" class="font title" font-size="11" fill="#000000">4K UHD</text>
+
+        <!-- HDR10+ Badge -->
+        <rect x="70" y="0" width="60" height="22" rx="5" fill="rgba(255,255,255,0.14)" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+        <text x="100" y="15" text-anchor="middle" class="font semibold" font-size="10.5" fill="#ffffff">HDR10+</text>
+
+        <!-- Series Tag -->
+        <rect x="138" y="0" width="114" height="22" rx="11" fill="rgba(10,132,255,0.22)" stroke="rgba(10,132,255,0.4)" stroke-width="1"/>
+        <text x="195" y="15" text-anchor="middle" class="font semibold" font-size="10.5" fill="#64d2ff">SÉRIE ORIGINAL</text>
+
+        <!-- Rating -->
+        <rect x="260" y="0" width="56" height="22" rx="11" fill="rgba(255,214,10,0.18)" stroke="rgba(255,214,10,0.38)" stroke-width="1"/>
+        <text x="288" y="15" text-anchor="middle" class="font semibold" font-size="10.5" fill="#ffd60a">★ 9.2</text>
+      </g>
+
+      <!-- Title -->
+      <text x="0" y="74" class="font title" font-size="34" fill="#ffffff">AURORA: Além do Horizonte</text>
+      
+      <!-- Meta -->
+      <text x="0" y="104" class="font medium" font-size="13" fill="rgba(235,235,245,0.65)">2026 • 2 Temporadas • Ficção Científica • Áudio Espacial Dolby Atmos</text>
+
+      <!-- Synopsis -->
+      <text x="0" y="136" class="font regular" font-size="14.5" fill="rgba(235,235,245,0.85)">
+        Na fronteira galáctica, uma tripulação de exploradores descobre uma anomalia temporal
+      </text>
+      <text x="0" y="158" class="font regular" font-size="14.5" fill="rgba(235,235,245,0.85)">
+        que redefine o destino da civilização humana e desafia as leis do universo.
+      </text>
+
+      <!-- Actions Buttons -->
+      <g transform="translate(0, 192)">
+        <!-- Play Button (Apple White Inverted) -->
+        <rect x="0" y="0" width="168" height="46" rx="23" fill="#ffffff" filter="url(#pill-shadow)"/>
+        <path d="M26 16 L26 30 L38 23 Z" fill="#000000"/>
+        <text x="96" y="28" text-anchor="middle" class="font semibold" font-size="14" fill="#000000">Assistir T1:E1</text>
+
+        <!-- Favorite Button (Liquid Glass) -->
+        <rect x="180" y="0" width="136" height="46" rx="23" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+        <path d="M202 18 L204 23 L209 23.5 L205.5 27 L206.5 32 L202 29.5 L197.5 32 L198.5 27 L195 23.5 L200 23 Z" fill="none" stroke="#ffffff" stroke-width="1.8"/>
+        <text x="244" y="28" text-anchor="middle" class="font semibold" font-size="14" fill="#ffffff">Favorito</text>
+
+        <!-- Live Quick Access -->
+        <rect x="328" y="0" width="144" height="46" rx="23" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+        <circle cx="348" cy="23" r="4" fill="#ff453a"/>
+        <text x="408" y="28" text-anchor="middle" class="font semibold" font-size="14" fill="#ffffff">TV ao Vivo</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Horizontal Shelf: "Em Alta no KS TV-Stream" -->
+  <g transform="translate(48, 434)">
+    <text x="0" y="0" class="font title" font-size="18" fill="#ffffff">Em Alta no KS TV-Stream</text>
+
+    <!-- Cards Row -->
+    <!-- Card 1 (Simulated 4K Movie - Focused State) -->
+    <g transform="translate(0, 16)" filter="url(#card-shadow)">
+      <!-- Focus Ring (2.5px white border + scale) -->
+      <rect x="-3" y="-3" width="180" height="236" rx="15" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+      <rect width="174" height="230" rx="12" fill="#1c1c24" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+      <!-- Poster Art (Vector Art Pattern) -->
+      <rect width="174" height="162" rx="12" fill="#182238"/>
+      <path d="M 0 120 Q 87 60 174 120 L 174 162 L 0 162 Z" fill="#0f1624" opacity="0.8"/>
+      <circle cx="130" cy="50" r="22" fill="#ff9f0a" opacity="0.75"/>
+      <text x="87" y="105" text-anchor="middle" class="font title" font-size="16" fill="#ffffff">CYBER CITY</text>
+      <!-- 4K Badge -->
+      <rect x="8" y="8" width="38" height="18" rx="4" fill="url(#badge-4k-grad)"/>
+      <text x="27" y="21" text-anchor="middle" class="font title" font-size="9" fill="#000000">4K</text>
+      <!-- Rating Badge -->
+      <rect x="122" y="8" width="44" height="18" rx="9" fill="rgba(12,12,14,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <text x="144" y="21" text-anchor="middle" class="font semibold" font-size="9.5" fill="#ffd60a">★ 8.8</text>
+      <!-- Caption -->
+      <g transform="translate(10, 178)">
+        <text x="0" y="16" class="font semibold" font-size="13" fill="#ffffff">Cyber City 2099</text>
+        <text x="0" y="34" class="font regular" font-size="11" fill="rgba(235,235,245,0.65)">2026 • Ficção / Ação</text>
+      </g>
+    </g>
+
+    <!-- Card 2 (Simulated 4K Movie) -->
+    <g transform="translate(198, 16)">
+      <rect width="174" height="230" rx="12" fill="#14141a" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <rect width="174" height="162" rx="12" fill="#281a18"/>
+      <circle cx="87" cy="70" r="36" fill="#ff453a" opacity="0.5"/>
+      <text x="87" y="105" text-anchor="middle" class="font title" font-size="16" fill="#ffffff">REINO PERDIDO</text>
+      <!-- 4K Badge -->
+      <rect x="8" y="8" width="38" height="18" rx="4" fill="url(#badge-4k-grad)"/>
+      <text x="27" y="21" text-anchor="middle" class="font title" font-size="9" fill="#000000">4K</text>
+      <rect x="122" y="8" width="44" height="18" rx="9" fill="rgba(12,12,14,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <text x="144" y="21" text-anchor="middle" class="font semibold" font-size="9.5" fill="#ffd60a">★ 8.4</text>
+      <g transform="translate(10, 178)">
+        <text x="0" y="16" class="font semibold" font-size="13" fill="#ffffff">Reino Perdido</text>
+        <text x="0" y="34" class="font regular" font-size="11" fill="rgba(235,235,245,0.65)">2025 • Aventura</text>
+      </g>
+    </g>
+
+    <!-- Card 3 (Simulated Live Channel Card in Shelf) -->
+    <g transform="translate(396, 16)">
+      <rect width="254" height="74" rx="14" fill="#16161c" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <!-- Logo Box -->
+      <rect x="12" y="13" width="48" height="48" rx="10" fill="#0b0b0e" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <text x="36" y="42" text-anchor="middle" class="font title" font-size="12" fill="#ffffff">KSS</text>
+      <!-- Meta -->
+      <g transform="translate(72, 26)">
+        <text x="0" y="0" class="font semibold" font-size="11" fill="rgba(235,235,245,0.65)">CH 1</text>
+        <circle cx="38" cy="-4" r="3" fill="#ff453a"/>
+        <text x="46" y="0" class="font semibold" font-size="10.5" fill="#ff453a">AO VIVO</text>
+        <rect x="100" y="-11" width="30" height="15" rx="3.5" fill="url(#badge-4k-grad)"/>
+        <text x="115" y="-1" text-anchor="middle" class="font title" font-size="8.5" fill="#000000">4K</text>
+        <text x="0" y="24" class="font semibold" font-size="14" fill="#ffffff">KS Sports Brasil 4K</text>
+      </g>
+    </g>
+
+    <!-- Card 4 (Simulated Nature 4K) -->
+    <g transform="translate(674, 16)">
+      <rect width="174" height="230" rx="12" fill="#14141a" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <rect width="174" height="162" rx="12" fill="#13261a"/>
+      <path d="M 30 162 L 87 70 L 144 162 Z" fill="#204028" opacity="0.7"/>
+      <text x="87" y="105" text-anchor="middle" class="font title" font-size="15" fill="#ffffff">PLANETA AZUL</text>
+      <rect x="8" y="8" width="38" height="18" rx="4" fill="url(#badge-4k-grad)"/>
+      <text x="27" y="21" text-anchor="middle" class="font title" font-size="9" fill="#000000">4K</text>
+      <rect x="122" y="8" width="44" height="18" rx="9" fill="rgba(12,12,14,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <text x="144" y="21" text-anchor="middle" class="font semibold" font-size="9.5" fill="#ffd60a">★ 9.4</text>
+      <g transform="translate(10, 178)">
+        <text x="0" y="16" class="font semibold" font-size="13" fill="#ffffff">Planeta Selvagem</text>
+        <text x="0" y="34" class="font regular" font-size="11" fill="rgba(235,235,245,0.65)">2026 • Documentário</text>
+      </g>
+    </g>
+
+    <!-- Card 5 (Simulated Speed 4K) -->
+    <g transform="translate(872, 16)">
+      <rect width="174" height="230" rx="12" fill="#14141a" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <rect width="174" height="162" rx="12" fill="#291a0b"/>
+      <text x="87" y="105" text-anchor="middle" class="font title" font-size="15" fill="#ffffff">VELOCIDADE</text>
+      <rect x="8" y="8" width="38" height="18" rx="4" fill="url(#badge-4k-grad)"/>
+      <text x="27" y="21" text-anchor="middle" class="font title" font-size="9" fill="#000000">4K</text>
+      <rect x="122" y="8" width="44" height="18" rx="9" fill="rgba(12,12,14,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <text x="144" y="21" text-anchor="middle" class="font semibold" font-size="9.5" fill="#ffd60a">★ 8.1</text>
+      <g transform="translate(10, 178)">
+        <text x="0" y="16" class="font semibold" font-size="13" fill="#ffffff">Rota Extrema</text>
+        <text x="0" y="34" class="font regular" font-size="11" fill="rgba(235,235,245,0.65)">2025 • Ação</text>
+      </g>
+    </g>
+
+    <!-- Card 6 (Simulated Channel 2) -->
+    <g transform="translate(1070, 16)">
+      <rect width="114" height="230" rx="12" fill="#14141a" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+      <rect width="114" height="162" rx="12" fill="#1c1626"/>
+      <text x="57" y="105" text-anchor="middle" class="font title" font-size="14" fill="#ffffff">CINEMA</text>
+      <g transform="translate(10, 178)">
+        <text x="0" y="16" class="font semibold" font-size="12" fill="#ffffff">Cine KS</text>
+      </g>
+    </g>
+  </g>
+</svg>

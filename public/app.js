@@ -24,6 +24,7 @@
     liveCategories: [],
     vodCategories: [],
     seriesCategories: [],
+    fourKCatIds: new Set(),
 
     // Active Category IDs
     activeLiveCatId: null,
@@ -79,6 +80,10 @@
       isPlaying: false,
       aspectMode: 'contain',
       hls: null,
+      activePopover: null, // 'quality' | 'audio' | 'subs' | null
+      popoverTrigger: null,
+      customSubBlobUrls: [],
+      pendingResumeTime: 0,
       previousFocus: null
     }
   };
@@ -160,8 +165,11 @@
 
     // Details Modal
     detailsModal: document.getElementById('details-modal'),
+    btnDetailsBack: document.getElementById('btn-details-back'),
+    detailsTopBarTitle: document.getElementById('details-top-bar-title'),
     detailsBackdrop: document.getElementById('details-backdrop'),
     detailsPoster: document.getElementById('details-poster'),
+    detailsBadge4k: document.getElementById('details-badge-4k'),
     detailsBadgeType: document.getElementById('details-badge-type'),
     detailsBadgeYear: document.getElementById('details-badge-year'),
     detailsBadgeRating: document.getElementById('details-badge-rating'),
@@ -170,6 +178,7 @@
     detailsPlot: document.getElementById('details-plot'),
     btnDetailsPlay: document.getElementById('btn-details-play'),
     btnDetailsFav: document.getElementById('btn-details-fav'),
+    detailsFavLabel: document.getElementById('details-fav-label'),
     btnDetailsClose: document.getElementById('btn-details-close'),
     seriesEpisodesSection: document.getElementById('series-episodes-section'),
     seasonSelector: document.getElementById('season-selector'),
@@ -178,6 +187,11 @@
     // Video Player Overlay & OSD
     playerOverlay: document.getElementById('player-overlay'),
     videoElement: document.getElementById('video-element'),
+    subtitleFileInput: document.getElementById('subtitle-file-input'),
+    miniPipBar: document.getElementById('mini-pip-bar'),
+    miniPipTitle: document.getElementById('mini-pip-title'),
+    btnMiniPipExpand: document.getElementById('btn-mini-pip-expand'),
+    btnMiniPipClose: document.getElementById('btn-mini-pip-close'),
     playerSpinner: document.getElementById('player-Spinner'),
     playerLoadingText: document.getElementById('player-loading-text'),
     playerErrorBox: document.getElementById('player-error-box'),
@@ -187,11 +201,18 @@
     btnPlayerExitErr: document.getElementById('btn-player-exit-err'),
 
     playerOsd: document.getElementById('player-osd'),
+    btnOsdBack: document.getElementById('btn-osd-back'),
+    osdBackLabel: document.getElementById('osd-back-label'),
     osdLiveBadge: document.getElementById('osd-live-badge'),
     osdCategoryPill: document.getElementById('osd-category-pill'),
+    osdResBadge: document.getElementById('osd-res-badge'),
     osdChannelDrawer: document.getElementById('osd-channel-drawer'),
     osdDrawerEpg: document.getElementById('osd-drawer-epg'),
     osdDrawerList: document.getElementById('osd-drawer-list'),
+    osdTracksPopover: document.getElementById('osd-tracks-popover'),
+    osdPopoverTitle: document.getElementById('osd-popover-title'),
+    btnOsdPopoverClose: document.getElementById('btn-osd-popover-close'),
+    osdPopoverList: document.getElementById('osd-popover-list'),
     osdLogo: document.getElementById('osd-logo'),
     osdTitle: document.getElementById('osd-title'),
     osdSubtitle: document.getElementById('osd-subtitle'),
@@ -204,10 +225,17 @@
     btnOsdPrevCh: document.getElementById('btn-osd-prev-ch'),
     btnOsdRw: document.getElementById('btn-osd-rw'),
     btnOsdPlayPause: document.getElementById('btn-osd-playpause'),
+    osdPlayPauseIcon: document.getElementById('osd-playpause-icon'),
     osdPlayPauseLabel: document.getElementById('osd-playpause-label'),
     btnOsdFf: document.getElementById('btn-osd-ff'),
     btnOsdNextCh: document.getElementById('btn-osd-next-ch'),
     btnOsdNextEp: document.getElementById('btn-osd-next-ep'),
+    btnOsdQuality: document.getElementById('btn-osd-quality'),
+    osdQualityLabel: document.getElementById('osd-quality-label'),
+    btnOsdAudio: document.getElementById('btn-osd-audio'),
+    osdAudioLabel: document.getElementById('osd-audio-label'),
+    btnOsdSubs: document.getElementById('btn-osd-subs'),
+    osdSubsLabel: document.getElementById('osd-subs-label'),
     btnOsdFav: document.getElementById('btn-osd-fav'),
     osdFavLabel: document.getElementById('osd-fav-label'),
     btnOsdAspect: document.getElementById('btn-osd-aspect'),
@@ -300,6 +328,88 @@
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  const FOUR_K_REGEX = /(?:^|[\s\[\(\-\|\._\/])(4k|uhd|2160p)(?:$|[\s\]\)\-\|\._\/+])/i;
+
+  function rebuildFourKCategorySet() {
+    state.fourKCatIds.clear();
+    const scan = (cats, type) => {
+      (cats || []).forEach(c => {
+        if (c && FOUR_K_REGEX.test(c.category_name || '')) {
+          state.fourKCatIds.add(`${type}:${c.category_id}`);
+        }
+      });
+    };
+    scan(state.liveCategories, 'live');
+    scan(state.vodCategories, 'movie');
+    scan(state.seriesCategories, 'series');
+  }
+
+  function isItem4K(item, type) {
+    if (!item) return false;
+    const label = String(item.name || item.title || '');
+    if (FOUR_K_REGEX.test(label)) return true;
+    if (item.category_name && FOUR_K_REGEX.test(item.category_name)) return true;
+    if (item.category_id != null && type && state.fourKCatIds.has(`${type}:${item.category_id}`)) {
+      return true;
+    }
+    return false;
+  }
+
+  function formatLangCode(raw) {
+    const code = String(raw || '').trim().toLowerCase();
+    const map = {
+      pt: 'Português',
+      'pt-br': 'Português (Brasil)',
+      por: 'Português',
+      pob: 'Português (Brasil)',
+      en: 'Inglês',
+      eng: 'Inglês',
+      es: 'Espanhol',
+      spa: 'Espanhol',
+      fr: 'Francês',
+      fre: 'Francês',
+      it: 'Italiano',
+      ita: 'Italiano',
+      ja: 'Japonês',
+      jpn: 'Japonês',
+      ko: 'Coreano',
+      kor: 'Coreano',
+      de: 'Alemão',
+      ger: 'Alemão',
+      und: 'Áudio Original'
+    };
+    return map[code] || (raw ? String(raw).toUpperCase() : '');
+  }
+
+  function srtToVtt(srtText) {
+    const clean = String(srtText || '')
+      .replace(/^\uFEFF/, '')
+      .replace(/\r+/g, '')
+      .trim();
+    if (clean.startsWith('WEBVTT')) return clean;
+    const converted = clean.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
+    return 'WEBVTT\n\n' + converted + '\n';
+  }
+
+  function normalizeMediaBaseTitle(rawName) {
+    return String(rawName || '')
+      .toLowerCase()
+      .replace(/\[[^\]]*\]|\([^\)]*\)/g, ' ')
+      .replace(/\b(4k|uhd|2160p|fhd|full\s*hd|1080p|hd|720p|sd|480p|h\.?265|hevc|leg|legendado|dub|dublado|dual|alt|backup)\b/gi, ' ')
+      .replace(/[^a-z0-9\u00c0-\u017f]+/gi, ' ')
+      .trim();
+  }
+
+  function extractQualityTagFromName(rawName) {
+    const s = String(rawName || '');
+    if (/\b(4k|uhd|2160p)\b/i.test(s)) return '4K UHD';
+    if (/\b(fhd|full\s*hd|1080p)\b/i.test(s)) return 'Full HD (1080p)';
+    if (/\b(h\.?265|hevc)\b/i.test(s)) return 'HEVC / H.265';
+    if (/\b(hd|720p)\b/i.test(s)) return 'HD (720p)';
+    if (/\b(sd|480p)\b/i.test(s)) return 'SD (480p)';
+    return '';
   }
 
   /* ========================================================================
@@ -550,7 +660,7 @@
       dom.loginError.classList.remove('hidden');
     } finally {
       dom.btnLoginSubmit.disabled = false;
-      dom.btnLoginText.textContent = 'Entrar agora';
+      dom.btnLoginText.textContent = 'Continuar';
     }
   }
 
@@ -559,6 +669,7 @@
     if (!res.ok) throw new Error('Falha ao ler a lista M3U informada.');
     const data = await res.json();
     state.liveCategories = data.categories || [];
+    rebuildFourKCategorySet();
     const grouped = new Map();
     (data.items || []).forEach(item => {
       if (!grouped.has(item.category_id)) grouped.set(item.category_id, []);
@@ -585,6 +696,7 @@
     state.liveCategories = Array.isArray(liveCats) ? liveCats : [];
     state.vodCategories = Array.isArray(vodCats) ? vodCats : [];
     state.seriesCategories = Array.isArray(seriesCats) ? seriesCats : [];
+    rebuildFourKCategorySet();
 
     dom.liveCatCount.textContent = state.liveCategories.length;
     dom.moviesCatCount.textContent = state.vodCategories.length;
@@ -744,9 +856,16 @@
     numSpan.textContent = `CH ${channel.num || index + 1}`;
     const liveDot = document.createElement('span');
     liveDot.className = 'live-dot';
-    liveDot.textContent = '● AO VIVO';
+    liveDot.textContent = 'AO VIVO';
     numRow.appendChild(numSpan);
     numRow.appendChild(liveDot);
+
+    if (isItem4K(channel, 'live')) {
+      const badge4k = document.createElement('span');
+      badge4k.className = 'channel-4k-badge';
+      badge4k.textContent = '4K';
+      numRow.appendChild(badge4k);
+    }
 
     const nameEl = document.createElement('div');
     nameEl.className = 'channel-name';
@@ -778,13 +897,19 @@
   }
 
   function createPosterCard(item, type) {
+    const fourK = isItem4K(item, type);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'poster-card';
+    btn.className = 'poster-card' + (fourK ? ' is-4k' : '');
     btn.dataset.focusable = 'true';
 
     const thumbWrap = document.createElement('div');
     thumbWrap.className = 'poster-thumb-wrap';
+
+    const fallback = document.createElement('div');
+    fallback.className = 'poster-fallback';
+    fallback.textContent = (item.name || item.title || 'TV').slice(0, 3).toUpperCase();
+    thumbWrap.appendChild(fallback);
 
     const coverUrl = item.stream_icon || item.cover || '';
     if (coverUrl) {
@@ -797,6 +922,13 @@
         img.style.display = 'none';
       };
       thumbWrap.appendChild(img);
+    }
+
+    if (fourK) {
+      const badge4k = document.createElement('span');
+      badge4k.className = 'poster-4k-badge';
+      badge4k.textContent = '4K';
+      thumbWrap.appendChild(badge4k);
     }
 
     const ratingVal = Number(item.rating || 0);
@@ -904,8 +1036,12 @@
       if (cover) {
         dom.heroBackdropImg.src = cover;
       }
-      dom.heroBadgeType.textContent = state.heroItem.type === 'movie' ? 'KS TV-Stream • Filme em Alta' : 'KS TV-Stream • Destaque';
-      dom.heroBadgeMeta.textContent = heroCandidate.year ? `${heroCandidate.year} • 4K HDR` : 'Alta Definição';
+      dom.heroBadgeType.textContent = state.heroItem.type === 'movie' ? 'Destaque • Filme' : 'Destaque • KS TV';
+      const heroIs4k = isItem4K(heroCandidate, state.heroItem.type);
+      dom.heroBadgeMeta.className = heroIs4k ? 'badge-4k' : 'badge-outline';
+      dom.heroBadgeMeta.textContent = heroIs4k
+        ? (heroCandidate.year ? `${heroCandidate.year} • 4K UHD` : '4K UHD • HDR')
+        : (heroCandidate.year ? `${heroCandidate.year} • HD` : 'Alta Definição');
       dom.heroTitle.textContent = heroCandidate.name || heroCandidate.title || 'Destaque KS TV-Stream';
       dom.heroDesc.textContent =
         heroCandidate.plot ||
@@ -966,6 +1102,12 @@
     dom.detailsPoster.src = cover;
     dom.detailsBackdrop.src =
       (Array.isArray(item.backdrop_path) && item.backdrop_path[0]) || cover;
+    if (dom.detailsBadge4k) {
+      dom.detailsBadge4k.classList.toggle('hidden', !isItem4K(item, type));
+    }
+    if (dom.detailsTopBarTitle) {
+      dom.detailsTopBarTitle.textContent = type === 'series' ? 'Série' : 'Filme';
+    }
     dom.detailsBadgeType.textContent = type === 'series' ? 'Série' : 'Filme';
     dom.detailsBadgeYear.textContent = item.year || 'HD';
     dom.detailsBadgeRating.textContent = item.rating ? `★ ${Number(item.rating).toFixed(1)}` : '★ HD';
@@ -1139,6 +1281,10 @@
     state.player.miniPipActive = false;
     dom.pipControlsBox.classList.add('hidden');
 
+    if (dom.miniPipTitle) {
+      dom.miniPipTitle.textContent = titleText;
+    }
+
     if (isLive) {
       requestChannelEpg(item);
     }
@@ -1167,7 +1313,8 @@
 
     // 2. WEB APP PLAYER
     state.player.active = true;
-    dom.playerOverlay.classList.remove('hidden', 'mini-pip-mode');
+    closeTracksPopover(false);
+    dom.playerOverlay.classList.remove('hidden', 'mini-pip-mode', 'cursor-idle');
     dom.playerErrorBox.classList.add('hidden');
     dom.playerSpinner.classList.remove('hidden');
     dom.playerLoadingText.textContent = 'Conectando ao sinal...';
@@ -1175,6 +1322,17 @@
     dom.osdLiveBadge.classList.toggle('hidden', !isLive);
     dom.osdCategoryPill.textContent =
       isLive ? 'TV ao Vivo' : type === 'movie' ? 'Filme • Cinema' : 'Série';
+
+    // 4K Badge detection
+    const is4kInitial = isItem4K(item, type);
+    dom.osdResBadge.classList.toggle('res-4k', is4kInitial);
+    dom.osdResBadge.textContent = is4kInitial ? '4K UHD' : '';
+    dom.osdResBadge.classList.toggle('hidden', !is4kInitial);
+
+    // Initial state for track buttons
+    dom.btnOsdQuality.classList.add('hidden');
+    dom.btnOsdAudio.classList.add('hidden');
+    dom.btnOsdSubs.classList.add('hidden');
 
     const logoUrl = item.stream_icon || item.cover || '';
     if (logoUrl) {
@@ -1213,10 +1371,12 @@
 
     const finalUrl = await resolveStreamRedirect(rawUrl);
     const video = dom.videoElement;
+    const isHlsUrl = isLive || /\.m3u8(\?|$)/i.test(finalUrl);
 
-    if (isLive && window.Hls && window.Hls.isSupported()) {
+    if (isHlsUrl && window.Hls && window.Hls.isSupported()) {
       const hls = new window.Hls({
         enableWorker: true,
+        enableWebVTT: true,
         lowLatencyMode: false,
         backBufferLength: 30,
         maxBufferLength: 30,
@@ -1228,6 +1388,27 @@
 
       hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
         video.play().catch(() => {});
+        refreshPlayerTrackControls();
+      });
+
+      hls.on(window.Hls.Events.LEVEL_SWITCHED, () => {
+        refreshPlayerTrackControls();
+      });
+
+      hls.on(window.Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+        refreshPlayerTrackControls();
+      });
+
+      hls.on(window.Hls.Events.AUDIO_TRACK_SWITCHED, () => {
+        refreshPlayerTrackControls();
+      });
+
+      hls.on(window.Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+        refreshPlayerTrackControls();
+      });
+
+      hls.on(window.Hls.Events.SUBTITLE_TRACK_SWITCH, () => {
+        refreshPlayerTrackControls();
       });
 
       hls.on(window.Hls.Events.ERROR, (_, data) => {
@@ -1246,6 +1427,53 @@
       video.load();
       video.play().catch(() => {});
     }
+
+    if (type === 'movie' || type === 'series') {
+      loadExternalXtreamSubtitles(item, type);
+    }
+  }
+
+  async function loadExternalXtreamSubtitles(item, type) {
+    if (!state.session || !isLocalServer) return;
+    const streamId = item.stream_id || (item.info && item.info.stream_id);
+    if (!streamId) return;
+    try {
+      const action = type === 'series'
+        ? `action=get_series_info&series_id=${item.series_id || streamId}`
+        : `action=get_vod_info&vod_id=${streamId}`;
+      const infoData = await fetchXtreamJson(action);
+      if (!infoData) return;
+      const subs = (infoData.info && infoData.info.subtitles) || infoData.subtitles;
+      if (Array.isArray(subs) && subs.length > 0) {
+        subs.forEach((sub, idx) => {
+          const subUrl = typeof sub === 'string' ? sub : sub.url || sub.link;
+          const lang = typeof sub === 'string' ? `Legenda ${idx + 1}` : sub.name || sub.language || `Legenda ${idx + 1}`;
+          if (subUrl) {
+            addExternalSubtitleTrack(subUrl, lang);
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  async function addExternalSubtitleTrack(subUrl, label) {
+    try {
+      const res = await fetch(`/api/xtream?url=${encodeURIComponent(subUrl)}`);
+      if (!res.ok) return;
+      const text = await res.text();
+      const vtt = srtToVtt(text);
+      const blob = new Blob([vtt], { type: 'text/vtt' });
+      const blobUrl = URL.createObjectURL(blob);
+      state.player.customSubBlobUrls.push(blobUrl);
+
+      const track = document.createElement('track');
+      track.kind = 'subtitles';
+      track.label = label || 'Legenda';
+      track.srclang = 'pt';
+      track.src = blobUrl;
+      dom.videoElement.appendChild(track);
+      refreshPlayerTrackControls();
+    } catch (_) {}
   }
 
   function renderWebChannelDrawer() {
@@ -1276,6 +1504,13 @@
   }
 
   function stopMediaEngines() {
+    closeTracksPopover(false);
+    if (state.player.customSubBlobUrls && state.player.customSubBlobUrls.length > 0) {
+      state.player.customSubBlobUrls.forEach(url => {
+        try { URL.revokeObjectURL(url); } catch (_) {}
+      });
+      state.player.customSubBlobUrls = [];
+    }
     if (window.AndroidBridge && typeof window.AndroidBridge.stopStream === 'function') {
       try { window.AndroidBridge.stopStream(); } catch (_) {}
     }
@@ -1285,6 +1520,7 @@
     }
     const video = dom.videoElement;
     video.pause();
+    video.querySelectorAll('track').forEach(t => t.remove());
     video.removeAttribute('src');
     video.load();
   }
@@ -1292,6 +1528,7 @@
   function showPlayerOsd(focusPrimary = false) {
     if (!state.player.active) return;
     state.player.osdVisible = true;
+    dom.playerOverlay.classList.remove('cursor-idle');
     dom.playerOsd.classList.remove('osd-hidden');
 
     if (focusPrimary) {
@@ -1310,8 +1547,12 @@
   }
 
   function hidePlayerOsd() {
+    closeTracksPopover(false);
     state.player.osdVisible = false;
     dom.playerOsd.classList.add('osd-hidden');
+    if (state.player.active) {
+      dom.playerOverlay.classList.add('cursor-idle');
+    }
     if (state.player.osdTimer) {
       clearTimeout(state.player.osdTimer);
       state.player.osdTimer = null;
@@ -1322,18 +1563,25 @@
     if (state.player.osdTimer) {
       clearTimeout(state.player.osdTimer);
     }
+    if (state.player.activePopover) return;
+
     state.player.osdTimer = setTimeout(() => {
-      if (state.player.active && state.player.isPlaying) {
+      if (state.player.active && state.player.isPlaying && !state.player.activePopover) {
         hidePlayerOsd();
       }
     }, OSD_AUTOHIDE_MS);
   }
 
   function enterWebMiniPipMode() {
+    closeTracksPopover(false);
     hidePlayerOsd();
     state.player.active = false;
     state.player.miniPipActive = true;
+    dom.playerOverlay.classList.remove('cursor-idle');
     dom.playerOverlay.classList.add('mini-pip-mode');
+    if (dom.miniPipTitle && state.player.currentItem) {
+      dom.miniPipTitle.textContent = state.player.currentItem.name || state.player.currentItem.title || 'Mini Player';
+    }
     dom.pipControlsBox.classList.remove('hidden');
     if (state.player.previousFocus && document.body.contains(state.player.previousFocus)) {
       setTvFocus(state.player.previousFocus);
@@ -1351,18 +1599,19 @@
     state.player.miniPipActive = false;
     state.player.active = true;
     dom.pipControlsBox.classList.add('hidden');
-    dom.playerOverlay.classList.remove('mini-pip-mode');
+    dom.playerOverlay.classList.remove('mini-pip-mode', 'cursor-idle');
     showPlayerOsd(true);
   }
 
   function closePlayer() {
+    closeTracksPopover(false);
     hidePlayerOsd();
     stopMediaEngines();
     state.player.active = false;
     state.player.miniPipActive = false;
     dom.pipControlsBox.classList.add('hidden');
     dom.playerOverlay.classList.add('hidden');
-    dom.playerOverlay.classList.remove('mini-pip-mode');
+    dom.playerOverlay.classList.remove('mini-pip-mode', 'cursor-idle');
     dom.playerSpinner.classList.add('hidden');
     dom.playerErrorBox.classList.add('hidden');
 
@@ -1427,9 +1676,9 @@
   function cycleAspectRatio() {
     const modes = ['contain', 'cover', 'fill'];
     const labels = {
-      contain: '⛶ Tela: Padrão',
-      cover: '⛶ Tela: Zoom',
-      fill: '⛶ Tela: Esticar'
+      contain: 'Padrão',
+      cover: 'Zoom',
+      fill: 'Esticar'
     };
     const next = modes[(modes.indexOf(state.player.aspectMode) + 1) % modes.length];
     state.player.aspectMode = next;
@@ -1442,7 +1691,12 @@
   }
 
   function updatePlayPauseLabel(isPlaying) {
-    dom.osdPlayPauseLabel.textContent = isPlaying ? '❚❚ Pausar' : '▶ Reproduzir';
+    dom.osdPlayPauseLabel.textContent = isPlaying ? 'Pausar' : 'Reproduzir';
+    if (dom.osdPlayPauseIcon) {
+      dom.osdPlayPauseIcon.innerHTML = isPlaying
+        ? '<rect x="5.2" y="4.2" width="3.4" height="11.6" rx="1.1" /><rect x="11.4" y="4.2" width="3.4" height="11.6" rx="1.1" />'
+        : '<path d="M5.6 3.9c0-.8.88-1.28 1.56-.86l9.6 5.96c.64.4.64 1.32 0 1.72l-9.6 5.96c-.68.42-1.56-.06-1.56-.86V3.9z" />';
+    }
   }
 
   function showPlayerError(msg) {
@@ -1452,14 +1706,488 @@
     setTvFocus(dom.btnPlayerRetry);
   }
 
+  /* --- Sibling Stream Finders (Quality & Audio versions) --- */
+  function getSiblingQualityItems() {
+    const item = state.player.currentItem;
+    if (!item) return [];
+    const baseTitle = normalizeMediaBaseTitle(item.name || item.title);
+    if (!baseTitle) return [];
+    const list = state.player.type === 'live' ? state.player.channelList : state.currentVodList;
+    if (!list || list.length === 0) return [];
+    return list.filter(other => normalizeMediaBaseTitle(other.name || other.title) === baseTitle);
+  }
+
+  function getSiblingAudioItems() {
+    if (state.player.type === 'live') return [];
+    const item = state.player.currentItem;
+    if (!item) return [];
+    const baseTitle = normalizeMediaBaseTitle(item.name || item.title);
+    if (!baseTitle) return [];
+    const list = state.currentVodList;
+    if (!list || list.length === 0) return [];
+    return list.filter(other => normalizeMediaBaseTitle(other.name || other.title) === baseTitle);
+  }
+
+  function getAvailableSubtitleTracks() {
+    const tracks = [];
+    const v = dom.videoElement;
+    const hls = state.player.hls;
+
+    if (hls && hls.subtitleTracks && hls.subtitleTracks.length > 0) {
+      hls.subtitleTracks.forEach((t, idx) => {
+        tracks.push({
+          type: 'hls',
+          index: idx,
+          label: t.name || formatLangCode(t.lang) || `Faixa ${idx + 1}`,
+          lang: t.lang,
+          active: hls.subtitleTrack === idx
+        });
+      });
+    }
+
+    if (v && v.textTracks && v.textTracks.length > 0) {
+      for (let i = 0; i < v.textTracks.length; i++) {
+        const tt = v.textTracks[i];
+        if (tracks.some(t => t.label === tt.label)) continue;
+        tracks.push({
+          type: 'native',
+          index: i,
+          label: tt.label || formatLangCode(tt.language) || `Legenda ${i + 1}`,
+          lang: tt.language,
+          active: tt.mode === 'showing'
+        });
+      }
+    }
+
+    return tracks;
+  }
+
+  function refreshPlayerTrackControls() {
+    if (!state.player.active) return;
+    const v = dom.videoElement;
+    const hls = state.player.hls;
+    const item = state.player.currentItem;
+    const type = state.player.type;
+
+    // 1. Resolution Badge & Quality Label
+    let resText = '';
+    let is4K = isItem4K(item, type);
+    const w = v.videoWidth || 0;
+    const h = v.videoHeight || 0;
+
+    if (h >= 2000 || w >= 3800 || is4K) {
+      resText = '4K UHD';
+      is4K = true;
+    } else if (h >= 1400) {
+      resText = '1440p QHD';
+    } else if (h >= 1000) {
+      resText = '1080p FHD';
+    } else if (h >= 700) {
+      resText = '720p HD';
+    } else if (h > 0) {
+      resText = 'SD';
+    }
+
+    if (hls && hls.levels && hls.currentLevel >= 0 && hls.levels[hls.currentLevel]) {
+      const lvl = hls.levels[hls.currentLevel];
+      if (lvl.height >= 2000 || lvl.width >= 3800) {
+        resText = '4K UHD';
+        is4K = true;
+      } else if (lvl.height >= 1400) {
+        resText = '1440p';
+      } else if (lvl.height >= 1000) {
+        resText = '1080p';
+      } else if (lvl.height >= 700) {
+        resText = '720p';
+      } else if (lvl.height > 0) {
+        resText = `${lvl.height}p`;
+      }
+    }
+
+    if (resText || is4K) {
+      dom.osdResBadge.textContent = resText || '4K UHD';
+      dom.osdResBadge.classList.toggle('res-4k', is4K);
+      dom.osdResBadge.classList.remove('hidden');
+    } else {
+      dom.osdResBadge.classList.add('hidden');
+    }
+
+    const siblingQualities = getSiblingQualityItems();
+    const hasHlsLevels = hls && hls.levels && hls.levels.length > 1;
+    const canChangeQuality = hasHlsLevels || siblingQualities.length > 1 || h > 0;
+
+    if (canChangeQuality) {
+      let qLabel = 'Automática';
+      if (hasHlsLevels) {
+        if (hls.autoLevelEnabled || hls.currentLevel === -1) {
+          qLabel = resText ? `Auto (${resText})` : 'Auto';
+        } else if (hls.levels[hls.currentLevel]) {
+          const lvl = hls.levels[hls.currentLevel];
+          qLabel = `${lvl.height || lvl.width}p`;
+        }
+      } else if (resText) {
+        qLabel = resText;
+      }
+      dom.osdQualityLabel.textContent = qLabel;
+      dom.btnOsdQuality.classList.remove('hidden');
+    } else {
+      dom.btnOsdQuality.classList.add('hidden');
+    }
+
+    // 2. Audio Button
+    const hasHlsAudio = hls && hls.audioTracks && hls.audioTracks.length > 1;
+    const siblingAudios = getSiblingAudioItems();
+    const hasNativeAudio = v.audioTracks && v.audioTracks.length > 1;
+    const canAudio = hasHlsAudio || siblingAudios.length > 1 || hasNativeAudio || type !== 'live';
+
+    if (canAudio) {
+      let aLabel = 'Áudio';
+      if (hasHlsAudio && hls.audioTracks[hls.audioTrack]) {
+        const t = hls.audioTracks[hls.audioTrack];
+        aLabel = formatLangCode(t.lang) || t.name || 'Áudio';
+      } else if (item && item.name) {
+        if (/\b(dub|dublado)\b/i.test(item.name)) aLabel = 'Dublado';
+        else if (/\b(leg|legendado)\b/i.test(item.name)) aLabel = 'Original / Leg';
+        else if (/\b(dual)\b/i.test(item.name)) aLabel = 'Dual Áudio';
+      }
+      dom.osdAudioLabel.textContent = aLabel;
+      dom.btnOsdAudio.classList.remove('hidden');
+    } else {
+      dom.btnOsdAudio.classList.add('hidden');
+    }
+
+    // 3. Subtitles Button
+    const subTracks = getAvailableSubtitleTracks();
+    const canSubs = subTracks.length > 0 || type !== 'live';
+    if (canSubs) {
+      const activeSub = subTracks.find(t => t.active);
+      dom.osdSubsLabel.textContent = activeSub ? activeSub.label : 'Legendas';
+      dom.btnOsdSubs.classList.remove('hidden');
+    } else {
+      dom.btnOsdSubs.classList.add('hidden');
+    }
+  }
+
+  /* --- Apple TV Glass Popover for Resolution, Audio & Subtitles --- */
+  function openTracksPopover(kind, triggerBtn) {
+    state.player.activePopover = kind;
+    state.player.popoverTrigger = triggerBtn;
+
+    dom.osdPopoverList.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    if (kind === 'quality') {
+      dom.osdPopoverTitle.textContent = 'Qualidade de Vídeo';
+      const hls = state.player.hls;
+      const v = dom.videoElement;
+
+      if (hls && hls.levels && hls.levels.length > 1) {
+        const autoBtn = createPopoverItem({
+          title: 'Automática',
+          sub: hls.autoLevelEnabled ? `Ativa (${v.videoHeight || ''}p)` : 'Ajusta dinamicamente à sua conexão',
+          active: hls.autoLevelEnabled || hls.currentLevel === -1,
+          onClick: () => {
+            hls.currentLevel = -1;
+            closeTracksPopover(true);
+            refreshPlayerTrackControls();
+          }
+        });
+        frag.appendChild(autoBtn);
+
+        hls.levels.forEach((lvl, idx) => {
+          const height = lvl.height || Math.round(lvl.width * 9 / 16);
+          const name = height >= 2000 ? '4K UHD (2160p)' : height >= 1000 ? `Full HD (${height}p)` : `${height}p`;
+          const kbps = lvl.bitrate ? ` • ${(lvl.bitrate / 1000000).toFixed(1)} Mbps` : '';
+          const btn = createPopoverItem({
+            title: name,
+            sub: `${lvl.width || ''}x${lvl.height || ''}${kbps}`,
+            active: !hls.autoLevelEnabled && hls.currentLevel === idx,
+            onClick: () => {
+              hls.currentLevel = idx;
+              closeTracksPopover(true);
+              refreshPlayerTrackControls();
+            }
+          });
+          frag.appendChild(btn);
+        });
+      }
+
+      const siblings = getSiblingQualityItems();
+      if (siblings.length > 1) {
+        if (frag.childNodes.length > 0) {
+          frag.appendChild(createPopoverDivider('Variantes do Canal / Catálogo'));
+        }
+        siblings.forEach(s => {
+          const qTag = extractQualityTagFromName(s.name || s.title) || (isItem4K(s, state.player.type) ? '4K UHD' : 'Padrão');
+          const isActive = (s.stream_id && state.player.currentItem && s.stream_id === state.player.currentItem.stream_id) || (s === state.player.currentItem);
+          const btn = createPopoverItem({
+            title: s.name || s.title,
+            sub: qTag,
+            active: isActive,
+            onClick: () => {
+              if (isActive) {
+                closeTracksPopover(true);
+                return;
+              }
+              if (state.player.type !== 'live') {
+                state.player.pendingResumeTime = dom.videoElement.currentTime || 0;
+              }
+              closeTracksPopover(false);
+              startPlayback({
+                type: state.player.type,
+                item: s,
+                channelList: state.player.channelList,
+                channelIndex: state.player.channelList.indexOf(s),
+                episodeList: state.player.episodeList,
+                episodeIndex: state.player.episodeIndex,
+                triggerElement: triggerBtn
+              });
+            }
+          });
+          frag.appendChild(btn);
+        });
+      }
+
+      if (frag.childNodes.length === 0) {
+        const info = createPopoverNote(v.videoHeight ? `Resolução atual: ${v.videoWidth}x${v.videoHeight}` : 'Resolução fixa fornecida pelo servidor.');
+        frag.appendChild(info);
+      }
+    } else if (kind === 'audio') {
+      dom.osdPopoverTitle.textContent = 'Faixas de Áudio';
+      const hls = state.player.hls;
+      const v = dom.videoElement;
+
+      if (hls && hls.audioTracks && hls.audioTracks.length > 1) {
+        hls.audioTracks.forEach((t, idx) => {
+          const title = formatLangCode(t.lang) || t.name || `Faixa ${idx + 1}`;
+          const sub = t.lang ? `Idioma: ${t.lang.toUpperCase()}` : '';
+          const btn = createPopoverItem({
+            title,
+            sub,
+            active: hls.audioTrack === idx,
+            onClick: () => {
+              hls.audioTrack = idx;
+              closeTracksPopover(true);
+              refreshPlayerTrackControls();
+            }
+          });
+          frag.appendChild(btn);
+        });
+      }
+
+      if (v.audioTracks && v.audioTracks.length > 1) {
+        for (let i = 0; i < v.audioTracks.length; i++) {
+          const at = v.audioTracks[i];
+          const title = formatLangCode(at.language) || at.label || `Faixa ${i + 1}`;
+          const btn = createPopoverItem({
+            title,
+            sub: at.language ? at.language.toUpperCase() : '',
+            active: at.enabled,
+            onClick: () => {
+              for (let j = 0; j < v.audioTracks.length; j++) {
+                v.audioTracks[j].enabled = (j === i);
+              }
+              closeTracksPopover(true);
+              refreshPlayerTrackControls();
+            }
+          });
+          frag.appendChild(btn);
+        }
+      }
+
+      const audioSiblings = getSiblingAudioItems();
+      if (audioSiblings.length > 1) {
+        if (frag.childNodes.length > 0) {
+          frag.appendChild(createPopoverDivider('Versões Disponíveis'));
+        }
+        audioSiblings.forEach(s => {
+          let tag = 'Versão Padrão';
+          if (/\b(dub|dublado)\b/i.test(s.name)) tag = 'Dublado (Português)';
+          else if (/\b(leg|legendado)\b/i.test(s.name)) tag = 'Legendado (Original)';
+          else if (/\b(dual)\b/i.test(s.name)) tag = 'Dual Áudio';
+          const isActive = (s.stream_id && state.player.currentItem && s.stream_id === state.player.currentItem.stream_id) || (s === state.player.currentItem);
+
+          const btn = createPopoverItem({
+            title: s.name || s.title,
+            sub: tag,
+            active: isActive,
+            onClick: () => {
+              if (isActive) {
+                closeTracksPopover(true);
+                return;
+              }
+              state.player.pendingResumeTime = dom.videoElement.currentTime || 0;
+              closeTracksPopover(false);
+              startPlayback({
+                type: state.player.type,
+                item: s,
+                channelList: state.player.channelList,
+                channelIndex: state.player.channelList.indexOf(s),
+                episodeList: state.player.episodeList,
+                episodeIndex: state.player.episodeIndex,
+                triggerElement: triggerBtn
+              });
+            }
+          });
+          frag.appendChild(btn);
+        });
+      }
+
+      if (frag.childNodes.length === 0) {
+        frag.appendChild(createPopoverNote('Áudio padrão estéreo embutido no sinal.'));
+      }
+    } else if (kind === 'subs') {
+      dom.osdPopoverTitle.textContent = 'Legendas';
+      const hls = state.player.hls;
+      const v = dom.videoElement;
+      const tracks = getAvailableSubtitleTracks();
+      const anyActive = tracks.some(t => t.active);
+
+      const offBtn = createPopoverItem({
+        title: 'Desativada',
+        sub: 'Sem legendas na tela',
+        active: !anyActive,
+        onClick: () => {
+          if (hls) hls.subtitleTrack = -1;
+          if (v.textTracks) {
+            for (let i = 0; i < v.textTracks.length; i++) {
+              v.textTracks[i].mode = 'disabled';
+            }
+          }
+          closeTracksPopover(true);
+          refreshPlayerTrackControls();
+        }
+      });
+      frag.appendChild(offBtn);
+
+      if (tracks.length > 0) {
+        frag.appendChild(createPopoverDivider('Faixas Disponíveis'));
+        tracks.forEach(t => {
+          const btn = createPopoverItem({
+            title: t.label,
+            sub: t.lang ? `Idioma: ${t.lang.toUpperCase()}` : 'Faixa de legenda',
+            active: t.active,
+            onClick: () => {
+              if (t.type === 'hls' && hls) {
+                hls.subtitleTrack = t.index;
+              } else if (v.textTracks && v.textTracks[t.index]) {
+                for (let i = 0; i < v.textTracks.length; i++) {
+                  v.textTracks[i].mode = (i === t.index) ? 'showing' : 'disabled';
+                }
+              }
+              closeTracksPopover(true);
+              refreshPlayerTrackControls();
+            }
+          });
+          frag.appendChild(btn);
+        });
+      }
+
+      frag.appendChild(createPopoverDivider('Importar do Dispositivo'));
+      const importBtn = createPopoverItem({
+        title: 'Carregar arquivo (.srt / .vtt)...',
+        sub: 'Selecione uma legenda local no seu computador ou celular',
+        active: false,
+        onClick: () => {
+          dom.subtitleFileInput.click();
+        }
+      });
+      frag.appendChild(importBtn);
+    }
+
+    dom.osdPopoverList.appendChild(frag);
+    dom.osdTracksPopover.classList.remove('hidden');
+
+    const activeItem = dom.osdPopoverList.querySelector('.osd-popover-item.active') || dom.osdPopoverList.querySelector('.osd-popover-item');
+    if (activeItem) {
+      setTvFocus(activeItem);
+    }
+  }
+
+  function closeTracksPopover(restoreFocus = true) {
+    if (!state.player.activePopover) return;
+    state.player.activePopover = null;
+    dom.osdTracksPopover.classList.add('hidden');
+    dom.osdPopoverList.innerHTML = '';
+    if (restoreFocus && state.player.popoverTrigger && document.body.contains(state.player.popoverTrigger)) {
+      setTvFocus(state.player.popoverTrigger);
+    }
+    resetOsdAutoHideTimer();
+  }
+
+  function createPopoverItem({ title, sub = '', active = false, onClick }) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'osd-popover-item' + (active ? ' active' : '');
+    btn.dataset.focusable = 'true';
+
+    const check = document.createElement('span');
+    check.className = 'osd-popover-check';
+    check.textContent = active ? '✓' : '';
+
+    const labelBox = document.createElement('div');
+    labelBox.className = 'osd-popover-label-box';
+
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'osd-popover-label';
+    titleSpan.textContent = title;
+    labelBox.appendChild(titleSpan);
+
+    if (sub) {
+      const subSpan = document.createElement('span');
+      subSpan.className = 'osd-popover-sub';
+      subSpan.textContent = sub;
+      labelBox.appendChild(subSpan);
+    }
+
+    btn.appendChild(check);
+    btn.appendChild(labelBox);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (typeof onClick === 'function') onClick();
+    });
+
+    return btn;
+  }
+
+  function createPopoverDivider(text) {
+    const div = document.createElement('div');
+    div.className = 'osd-popover-divider';
+    div.textContent = text;
+    return div;
+  }
+
+  function createPopoverNote(text) {
+    const p = document.createElement('p');
+    p.className = 'osd-popover-note';
+    p.textContent = text;
+    return p;
+  }
+
   function setupVideoElementEvents() {
     const v = dom.videoElement;
+
+    v.addEventListener('loadedmetadata', () => {
+      if (state.player.pendingResumeTime > 0) {
+        try {
+          v.currentTime = state.player.pendingResumeTime;
+        } catch (_) {}
+        state.player.pendingResumeTime = 0;
+      }
+      refreshPlayerTrackControls();
+    });
+
+    v.addEventListener('resize', () => {
+      refreshPlayerTrackControls();
+    });
 
     v.addEventListener('playing', () => {
       state.player.isPlaying = true;
       dom.playerSpinner.classList.add('hidden');
       dom.playerErrorBox.classList.add('hidden');
       updatePlayPauseLabel(true);
+      refreshPlayerTrackControls();
     });
 
     v.addEventListener('pause', () => {
@@ -1494,6 +2222,102 @@
         v.currentTime = ratio * v.duration;
       }
       resetOsdAutoHideTimer();
+    });
+
+    // Subtitle File Upload
+    dom.subtitleFileInput.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const vtt = srtToVtt(text);
+        const blob = new Blob([vtt], { type: 'text/vtt' });
+        const blobUrl = URL.createObjectURL(blob);
+        state.player.customSubBlobUrls.push(blobUrl);
+
+        if (v.textTracks) {
+          for (let i = 0; i < v.textTracks.length; i++) {
+            v.textTracks[i].mode = 'disabled';
+          }
+        }
+        if (state.player.hls) {
+          state.player.hls.subtitleTrack = -1;
+        }
+
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = file.name.replace(/\.[^.]+$/, '');
+        track.srclang = 'pt';
+        track.src = blobUrl;
+        track.default = true;
+        v.appendChild(track);
+
+        setTimeout(() => {
+          if (track.track) track.track.mode = 'showing';
+          refreshPlayerTrackControls();
+          closeTracksPopover(true);
+        }, 120);
+      } catch (err) {
+        console.error('Falha ao importar legenda:', err);
+      }
+      dom.subtitleFileInput.value = '';
+    });
+
+    // Top OSD Back Button (Browser / TV Click)
+    dom.btnOsdBack.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.player.type === 'live') {
+        enterWebMiniPipMode();
+      } else {
+        closePlayer();
+      }
+    });
+
+    // Mini PiP Direct Action Buttons (Browser 1-click Close & Expand)
+    dom.btnMiniPipExpand.addEventListener('click', (e) => {
+      e.stopPropagation();
+      expandMiniPipToFullScreen();
+    });
+
+    dom.btnMiniPipClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.AndroidBridge && typeof window.AndroidBridge.closeMiniPlayer === 'function') {
+        window.AndroidBridge.closeMiniPlayer();
+      }
+      closePlayer();
+    });
+
+    // Bottom Track Popover Triggers
+    dom.btnOsdQuality.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.player.activePopover === 'quality') {
+        closeTracksPopover(true);
+      } else {
+        openTracksPopover('quality', dom.btnOsdQuality);
+      }
+    });
+
+    dom.btnOsdAudio.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.player.activePopover === 'audio') {
+        closeTracksPopover(true);
+      } else {
+        openTracksPopover('audio', dom.btnOsdAudio);
+      }
+    });
+
+    dom.btnOsdSubs.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.player.activePopover === 'subs') {
+        closeTracksPopover(true);
+      } else {
+        openTracksPopover('subs', dom.btnOsdSubs);
+      }
+    });
+
+    dom.btnOsdPopoverClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTracksPopover(true);
     });
 
     dom.btnOsdPlayPause.addEventListener('click', togglePlayPause);
@@ -1536,9 +2360,33 @@
     });
     dom.btnPlayerExitErr.addEventListener('click', closePlayer);
 
+    // Mouse wake up during browser playback
+    let lastMouseMoveTime = 0;
+    dom.playerOverlay.addEventListener('mousemove', () => {
+      if (!state.player.active || state.player.miniPipActive) return;
+      const now = Date.now();
+      if (now - lastMouseMoveTime < 180) return;
+      lastMouseMoveTime = now;
+      dom.playerOverlay.classList.remove('cursor-idle');
+      if (!state.player.osdVisible) {
+        showPlayerOsd(false);
+      } else {
+        resetOsdAutoHideTimer();
+      }
+    });
+
     dom.playerOverlay.addEventListener('click', (e) => {
+      if (e.target.closest('#mini-pip-bar') || e.target.closest('#pip-controls-box')) {
+        return;
+      }
       if (state.player.miniPipActive) {
         expandMiniPipToFullScreen();
+        return;
+      }
+      if (state.player.activePopover) {
+        if (!e.target.closest('#osd-tracks-popover') && !e.target.closest('#btn-osd-quality') && !e.target.closest('#btn-osd-audio') && !e.target.closest('#btn-osd-subs')) {
+          closeTracksPopover(false);
+        }
         return;
       }
       if (e.target === dom.videoElement) {
@@ -1604,13 +2452,19 @@
   function updateDetailsFavButton() {
     if (!state.modal.item) return;
     const fav = isFavorite(state.modal.item, state.modal.type);
-    dom.btnDetailsFav.textContent = fav ? '★ Nos Favoritos' : '☆ Favoritar';
+    dom.btnDetailsFav.classList.toggle('is-fav', fav);
+    if (dom.detailsFavLabel) {
+      dom.detailsFavLabel.textContent = fav ? 'Nos Favoritos' : 'Favoritar';
+    } else {
+      dom.btnDetailsFav.textContent = fav ? 'Nos Favoritos' : 'Favoritar';
+    }
   }
 
   function updateOsdFavButton() {
     if (!state.player.currentItem) return;
     const fav = isFavorite(state.player.currentItem, state.player.type);
-    dom.osdFavLabel.textContent = fav ? '★ Favorito' : '☆ Favoritar';
+    dom.btnOsdFav.classList.toggle('is-fav', fav);
+    dom.osdFavLabel.textContent = fav ? 'Favorito' : 'Favoritar';
   }
 
   function addToRecent(item, type) {
@@ -1731,6 +2585,10 @@
   function handleBackAction() {
     // 1. If Video Player is open in Full Screen:
     if (state.player.active) {
+      if (state.player.activePopover) {
+        closeTracksPopover(true);
+        return true;
+      }
       if (state.player.osdVisible) {
         // 1st Back press: Hide player options & channel list (leave video 100% CLEAR)!
         hidePlayerOsd();
@@ -1861,6 +2719,13 @@
     const drawerList = el.closest('.osd-drawer-list');
     if (drawerList) {
       drawerList.scrollTop = el.offsetTop - (drawerList.clientHeight >> 1) + (el.offsetHeight >> 1);
+      return;
+    }
+
+    // 2b. OSD Tracks Popover fast vertical centering
+    const popoverList = el.closest('.osd-popover-list');
+    if (popoverList) {
+      popoverList.scrollTop = el.offsetTop - (popoverList.clientHeight >> 1) + (el.offsetHeight >> 1);
       return;
     }
 
@@ -2072,11 +2937,48 @@
       return;
     }
 
+    // --- ZONE 5b: OSD Tracks Popover (.osd-tracks-popover) ---
+    if (current.closest('.osd-tracks-popover')) {
+      if (direction === 'up') {
+        if (current.previousElementSibling && current.previousElementSibling.classList.contains('osd-popover-item')) {
+          setTvFocus(current.previousElementSibling);
+        } else if (current !== dom.btnOsdPopoverClose) {
+          setTvFocus(dom.btnOsdPopoverClose);
+        }
+        return;
+      }
+      if (direction === 'down') {
+        if (current === dom.btnOsdPopoverClose) {
+          const firstItem = dom.osdPopoverList.querySelector('.osd-popover-item');
+          if (firstItem) setTvFocus(firstItem);
+        } else if (current.nextElementSibling && current.nextElementSibling.classList.contains('osd-popover-item')) {
+          setTvFocus(current.nextElementSibling);
+        }
+        return;
+      }
+      if (direction === 'left' || direction === 'right') return;
+    }
+
+    // --- ZONE 5c: Details Modal Top Bar (.details-top-bar) ---
+    if (state.modal.active) {
+      if (current === dom.btnDetailsBack && direction === 'down') {
+        const target = dom.btnDetailsPlay || dom.detailsModal.querySelector('.details-actions [data-focusable="true"]');
+        if (target) { setTvFocus(target); return; }
+      }
+      if (current.closest('.details-actions') && direction === 'up') {
+        if (dom.btnDetailsBack) { setTvFocus(dom.btnDetailsBack); return; }
+      }
+    }
+
     // --- ZONE 6: Live Channel Drawer inside Player (.osd-drawer-list) ---
     const drawerList = current.closest('.osd-drawer-list');
     if (drawerList) {
-      if (direction === 'up' && current.previousElementSibling) {
-        setTvFocus(current.previousElementSibling);
+      if (direction === 'up') {
+        if (current.previousElementSibling) {
+          setTvFocus(current.previousElementSibling);
+        } else {
+          setTvFocus(dom.btnOsdBack);
+        }
         return;
       }
       if (direction === 'down') {
@@ -2289,6 +3191,9 @@
       renderSeriesGrid();
     });
 
+    if (dom.btnDetailsBack) {
+      dom.btnDetailsBack.addEventListener('click', closeDetailsModal);
+    }
     dom.btnDetailsClose.addEventListener('click', closeDetailsModal);
     dom.btnDetailsFav.addEventListener('click', () => {
       if (state.modal.item) {

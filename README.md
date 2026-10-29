@@ -1,47 +1,143 @@
-# KS TV-Stream — Fire TV Stick 4K & Web
+# KS TV-Stream — Fire TV Stick 4K, Android TV & Web
 
-Player de IPTV minimalista inspirado no **tvOS (Apple TV)**, projetado para ser extremamente leve, rápido e fluido no **Amazon Fire TV Stick 4K** e no navegador.
+<p align="center">
+  <img src="docs/screenshots/preview-home-showcase.svg" alt="KS TV-Stream — Vitrine Apple TV+ (tvOS)" width="100%" />
+</p>
 
----
+<p align="center">
+  <b>Player de IPTV minimalista inspirado no tvOS (Apple TV)</b><br>
+  Projetado para máxima performance a <b>60 FPS</b> no <b>Amazon Fire TV Stick 4K</b>, <b>Google TV / Android TV</b> e no <b>navegador web</b>.
+</p>
 
-## ✨ Principais Diferenciais
-
-1. **Estética Minimalista estilo Apple TV**:
-   - Barra de navegação superior flutuante (`Início`, `TV ao Vivo`, `Filmes`, `Séries`, `Favoritos`, `Busca`, `Conta`).
-   - Foco de controle remoto (D-Pad) ultra-rápido a **60 FPS** e pôsteres em proporção de cinema (`2:3`).
-2. **Ultra Leve e Rápido (para listas com +75.000 conteúdos)**:
-   - Carregamento sob demanda por categoria (`&category_id`) com cache em memória (troca de categorias em `0ms` sem travar a memória da Fire TV).
-3. **Player "Clear" (Tela 100% Limpa) + Botão Voltar Inteligente + Mini Player**:
-   - Na reprodução de **TV ao Vivo**, **Filmes** e **Séries**, o vídeo roda em tela cheia limpa (*clear*).
-   - **1º Clique em VOLTAR (com opções do player visíveis na tela)**: **Some imediatamente com as opções do player**, mantendo o vídeo tocando com a tela 100% limpa (*clear*).
-   - **Barra de Progresso Interativa**: Nos filmes e séries, aperte **Cima** para destacar a barra de tempo e use **Esquerda / Direita** para avançar ou retroceder.
-4. **3 Opções de Login**:
-   - **Servidor + Usuário (Xtream Codes)**: Informe o Servidor, Usuário e Senha da sua lista.
-   - **Acesso Rápido**: Informe o DNS/IP e seu Usuário e Senha.
-   - **Lista M3U / URL**: Cole sua URL M3U Plus, SSIPTV ou Smart IPTV.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Fire%20TV%20Stick%20%7C%20Android%20TV%20%7C%20Web-blue?style=flat-square" alt="Plataforma" />
+  <img src="https://img.shields.io/badge/Engine-Media3%20ExoPlayer%20%2B%20HLS.js-success?style=flat-square" alt="Motor" />
+  <img src="https://img.shields.io/badge/Design-Apple%20tvOS%20Liquid%20Glass-black?style=flat-square" alt="Design" />
+  <img src="https://img.shields.io/badge/Performance-60%20FPS%20GPU%20Native-orange?style=flat-square" alt="Performance" />
+  <img src="https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square" alt="Licença" />
+</p>
 
 ---
 
-## 🚀 Como Usar
+## 📸 Demonstração da Interface (Simulações 100% Livres de Copyright)
 
-### Opção 1: Aplicativo Nativo Fire TV Stick 4K (`.APK` com Media3 ExoPlayer)
+### 1. Vitrine Principal & Destaques em 4K
+Interface inspirada no **Apple TV+ Top Shelf**, com foco dinâmico, proporção cinematográfica `2:3` e badges luminosos automáticos de **4K UHD** e **HDR**.
 
-O instalador `.apk` pronto para Fire TV Stick / Android TV fica disponível em:
-`dist/KS-TV-Stream.apk`
+<p align="center">
+  <img src="docs/screenshots/preview-home-showcase.svg" alt="Vitrine Principal" width="100%" />
+</p>
 
-Para compilar o APK ou instalar via ADB em uma Fire TV na mesma rede:
+---
+
+### 2. TV ao Vivo — Sidebar de Categorias & Grade de Canais
+Navegação instantânea com **0ms de atraso**, troca sob demanda por categoria (`&category_id`), indicador `AO VIVO`, numeração organizada e anel de foco luminoso Apple TV sem lavar as cores da capa.
+
+<p align="center">
+  <img src="docs/screenshots/preview-live-tv.svg" alt="TV ao Vivo e Canais" width="100%" />
+</p>
+
+---
+
+### 3. Player "Clear", Menu de Faixas e Mini Player (PiP)
+Controles completos com menu popover estilo Apple TV+ para seleção de **Resolução** (multi-bitrate HLS e variantes), **Áudio** (Dublado/Legendado/Dual), **Legendas** (embutidas e importação local de `.srt` / `.vtt`), além do **Mini Player flutuante com botão direto de fechar (✕)**.
+
+<p align="center">
+  <img src="docs/screenshots/preview-player-features.svg" alt="Player, Legendas, Áudio e Mini Player" width="100%" />
+</p>
+
+---
+
+## ✨ Principais Diferenciais e Funcionalidades
+
+1. **Estética Apple tvOS & Liquid Glass**:
+   - Barra de navegação em cápsula flutuante (`Início`, `TV ao Vivo`, `Filmes`, `Séries`, `Favoritos`, `Busca`, `Conta`).
+   - Motor de foco com aceleração por hardware (60 FPS) e contorno luminoso de 2.5px.
+   - Pôsteres cinematográficos em alta definição com badge **4K** automático para conteúdos UHD/2160p.
+
+2. **Qualidade de Vida (QoL) no Player**:
+   - **Botão `‹ Voltar` no Player**: Permite encolher a TV ao Vivo para o Mini Player ou sair do filme com um clique no navegador ou controle.
+   - **Botão `‹ Voltar` nas Páginas de Séries e Filmes**: Barra superior fixa para retornar instantaneamente à tela anterior sem depender da tecla Esc.
+   - **Menu Popover de Faixas**:
+     - **Resolução**: Alterna entre qualidades (4K, 1080p, 720p, Automática) mantendo o ponto exato da reprodução no VOD.
+     - **Áudio**: Seleção de canais de áudio e versões alternativas (*Dublado*, *Legendado*, *Dual*).
+     - **Legendas**: Exibição de legendas do fluxo, desativação e botão direto para carregar arquivos locais (`.srt` / `.vtt`).
+   - **Mini Player com Fechamento Direto**: Botão `✕` no canto da janela flutuante para encerrar o stream em 1 clique.
+
+3. **Arquitetura Ultra Leve para Listas Gigantes (+75.000 itens)**:
+   - Paginação sob demanda e cache inteligente em memória RAM (sem engasgar a memória do Fire TV Stick).
+   - Busca global ultra-rápida varrendo Canais, Filmes e Séries simultaneamente.
+
+4. **3 Formas de Conexão**:
+   - **Xtream Codes API**: Conexão nativa com Servidor, Usuário e Senha.
+   - **Acesso Rápido**: Conexão direta por DNS/IP.
+   - **Listas M3U / M3U Plus**: Importação direta de URLs M3U ou SSIPTV.
+
+---
+
+## 🚀 Como Compilar e Instalar o APK
+
+O arquivo instalador pronto fica disponível em:
+[`dist/KS-TV-Stream.apk`](dist/KS-TV-Stream.apk)
+
+### No Windows (PowerShell)
 
 ```powershell
+# 1. Apenas compilar o APK:
+powershell -ExecutionPolicy Bypass -File .\build-and-install-firetv.ps1
+
+# 2. Compilar e instalar direto na TV via Wi-Fi (ADB):
 powershell -ExecutionPolicy Bypass -File .\build-and-install-firetv.ps1 -InstallToFireTv -FireTvIp "SEU_IP_DA_FIRE_TV:5555"
+
+# 3. Compilar e instalar em aparelho conectado via USB:
+powershell -ExecutionPolicy Bypass -File .\build-and-install-firetv.ps1 -InstallToFireTv
 ```
 
-### Opção 2: Web App (No PC ou no Navegador da TV)
+### No Linux ou macOS (Bash)
 
-Para iniciar o servidor local:
+```bash
+# 1. Dar permissão de execução ao script:
+chmod +x ./build-and-install-firetv.sh
 
-```powershell
+# 2. Apenas compilar o APK:
+./build-and-install-firetv.sh
+
+# 3. Compilar e instalar direto na TV via Wi-Fi (ADB):
+./build-and-install-firetv.sh --install --ip "SEU_IP_DA_FIRE_TV:5555"
+
+# 4. Compilar e instalar em aparelho conectado via USB:
+./build-and-install-firetv.sh --install
+```
+
+---
+
+## 📺 Compatibilidade com Dispositivos Android
+
+O APK é gerado seguindo as diretrizes oficiais do Google Android e funciona em:
+
+| Plataforma | Dispositivos Compatíveis |
+| :--- | :--- |
+| **Amazon Fire OS** | Fire TV Stick Lite, Fire TV Stick HD, Fire TV Stick 4K, 4K Max e Fire TV Cube. |
+| **Google TV & Android TV** | Chromecast com Google TV (HD e 4K), Xiaomi Mi Box S, Mi TV Stick, Realme 4K Stick, Mecool, Strong. |
+| **Smart TVs Nativas** | Smart TVs TCL, Philips, Sony Bravia, Panasonic, Philco e Semp com Android TV / Google TV. |
+| **TV Boxes Genéricas** | Tanix, TX9, MXQ Pro 4K, Aquário e similares. |
+| **Smartphones e Tablets** | Compatível com Android 5.0 (Lollipop) até Android 14+ com suporte a toque e modo Mini Player. |
+
+---
+
+## 🌐 Como Executar no Navegador Web (Local)
+
+Para testar no computador ou navegador da TV sem precisar instalar o APK:
+
+```bash
 node server.js
 ```
 
-- **No Computador**: Abra `http://localhost:3099`
-- **Na TV (mesma rede Wi-Fi)**: Abra o endereço IP local exibido no terminal (ex: `http://192.168.x.x:3099`).
+- **No Computador**: Acesse `http://localhost:3099`
+- **Na TV ou Celular (mesma rede Wi-Fi)**: Acesse o endereço IP local informado no terminal (ex: `http://192.168.x.x:3099`).
+
+---
+
+## 🛡️ Aviso Legal & Direitos Autorais
+
+Este projeto é um reprodutor de mídia open-source e **não inclui, não hospeda e não distribui** nenhum tipo de lista de reprodução, canal de TV, filme ou série. Todas as imagens e nomes exibidos nas capturas de tela deste repositório são **artes conceituais e conteúdos fictícios simulados**, criados exclusivamente para demonstrar o funcionamento técnico da interface visual sem infringir direitos autorais.
