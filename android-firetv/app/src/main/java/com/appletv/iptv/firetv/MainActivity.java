@@ -2,7 +2,12 @@ package com.appletv.iptv.firetv;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
@@ -19,10 +24,12 @@ import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
@@ -32,6 +39,10 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.AppCompatButton;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
@@ -65,7 +76,14 @@ public class MainActivity extends AppCompatActivity {
     private PlayerView playerView;
     private ExoPlayer exoPlayer;
     private LinearLayout loadingBox;
+    private ProgressBar loadingSpinner;
+    private TextView loadingTitle;
     private TextView loadingText;
+    private LinearLayout osdBottomSheet;
+    private LinearLayout osdTopBar;
+    private boolean nativeLoadingActive = false;
+    private boolean isActivityVisible = true;
+    private int loadingPhraseIndex = 0;
 
     // Native OSD Overlay (Hidden on BACK press for 100% CLEAR screen)
     private FrameLayout osdRoot;
@@ -74,8 +92,10 @@ public class MainActivity extends AppCompatActivity {
     private TextView osdTitleView;
     private TextView osdSubtitleView;
     private TextView osdTimeView;
+    private TextView osdRemainingTimeView;
     private LinearLayout seekBarWrap;
     private SeekBar osdSeekBar;
+    private LinearLayout transportControls;
 
     // Native Channel List Drawer (Live TV when pressing OK / center button)
     private LinearLayout channelDrawerBox;
@@ -94,6 +114,8 @@ public class MainActivity extends AppCompatActivity {
     private Button btnAspect;
     private Button btnHideOsd;
     private Button btnExitPlayer;
+    private Button btnTopClose;
+    private long lastNativeOsdToggleTime = 0;
 
     private volatile boolean isNativePlayerOpen = false;
     private volatile boolean isCurrentStreamLive = false;
@@ -102,6 +124,25 @@ public class MainActivity extends AppCompatActivity {
 
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private static final long OSD_AUTO_HIDE_MS = 5000L;
+    private static final long LOADING_PHRASE_INTERVAL_MS = 3000L;
+    private static final String[] LOADING_PHRASES = {
+            "Mexendo na antena…",
+            "Limpando a tela…",
+            "Colocando Bombril na antena…"
+    };
+
+    private final Runnable loadingPhraseRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!nativeLoadingActive || !isNativePlayerOpen || isMiniPlayerMode || !isActivityVisible) {
+                hideNativeLoading();
+                return;
+            }
+            loadingPhraseIndex = (loadingPhraseIndex + 1) % LOADING_PHRASES.length;
+            loadingText.setText(LOADING_PHRASES[loadingPhraseIndex]);
+            uiHandler.postDelayed(this, LOADING_PHRASE_INTERVAL_MS);
+        }
+    };
 
     private final Runnable autoHideOsdRunnable = () -> {
         if (isNativePlayerOpen && !isMiniPlayerMode && exoPlayer != null && exoPlayer.isPlaying()) {
@@ -116,11 +157,11 @@ public class MainActivity extends AppCompatActivity {
                 long pos = Math.max(0L, exoPlayer.getCurrentPosition());
                 long dur = Math.max(0L, exoPlayer.getDuration());
                 if (dur > 0) {
-                    osdTimeView.setText(formatMs(pos) + " / " + formatMs(dur));
+                    updateNativeTimeline(pos, dur);
                     int progress = (int) ((pos * 1000L) / dur);
                     osdSeekBar.setProgress(Math.max(0, Math.min(1000, progress)));
                 } else {
-                    osdTimeView.setText(formatMs(pos) + " / --:--");
+                    updateNativeTimeline(pos, 0);
                 }
             }
             uiHandler.postDelayed(this, 500);
@@ -155,23 +196,30 @@ public class MainActivity extends AppCompatActivity {
         // 1. WebView for KS TV-Stream Catalog UI
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#07080D"));
-        webView.setVerticalScrollBarEnabled(false);
+        webView.setVerticalScrollBarEnabled(true);
         webView.setHorizontalScrollBarEnabled(false);
+        webView.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setAllowFileAccessFromFileURLs(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
+        settings.setAllowContentAccess(false);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
 
         webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                // Remote pages must not inherit the native bridge.
+                return request.isForMainFrame()
+                        && !request.getUrl().toString().startsWith("file:///android_asset/www/");
+            }
+        });
         webView.addJavascriptInterface(new AndroidBridge(), "AndroidBridge");
 
         root.addView(webView, new FrameLayout.LayoutParams(
@@ -208,47 +256,63 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
 
-        // Center Loading Spinner
+        // A compact connection status sits below transport, above the OSD layer.
         loadingBox = new LinearLayout(this);
-        loadingBox.setOrientation(LinearLayout.VERTICAL);
-        loadingBox.setGravity(Gravity.CENTER);
-        loadingBox.setPadding(dp(24), dp(18), dp(24), dp(18));
-        loadingBox.setBackground(makeRoundedRect(Color.parseColor("#D910131C"), dp(16), 1, Color.parseColor("#26FFFFFF")));
+        loadingBox.setOrientation(LinearLayout.HORIZONTAL);
+        loadingBox.setGravity(Gravity.CENTER_VERTICAL);
+        loadingBox.setPadding(dp(14), dp(9), dp(14), dp(9));
+        loadingBox.setBackground(makeGlassBackground(false, dp(18)));
+        loadingBox.setVisibility(View.GONE);
+        loadingBox.setFocusable(false);
+        loadingBox.setClickable(false);
+        loadingBox.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
 
-        ProgressBar spinner = new ProgressBar(this);
-        loadingBox.addView(spinner, new LinearLayout.LayoutParams(dp(36), dp(36)));
+        loadingSpinner = new ProgressBar(this);
+        loadingSpinner.setIndeterminateTintList(ColorStateList.valueOf(Color.WHITE));
+        LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(dp(20), dp(20));
+        spinnerParams.rightMargin = dp(11);
+        loadingBox.addView(loadingSpinner, spinnerParams);
+
+        LinearLayout loadingCopy = new LinearLayout(this);
+        loadingCopy.setOrientation(LinearLayout.VERTICAL);
+        loadingTitle = new TextView(this);
+        loadingTitle.setText(R.string.connecting);
+        loadingTitle.setTextColor(Color.parseColor("#A6FFFFFF"));
+        loadingTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+        loadingTitle.setVisibility(getResources().getConfiguration().screenHeightDp < 420 ? View.GONE : View.VISIBLE);
+        loadingCopy.addView(loadingTitle);
 
         loadingText = new TextView(this);
-        loadingText.setText("Conectando ao sinal...");
+        loadingText.setText(LOADING_PHRASES[0]);
         loadingText.setTextColor(Color.WHITE);
-        loadingText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        LinearLayout.LayoutParams ltParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        ltParams.topMargin = dp(10);
-        loadingBox.addView(loadingText, ltParams);
-
-        FrameLayout.LayoutParams loadParams = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.CENTER
-        );
-        nativePlayerRoot.addView(loadingBox, loadParams);
+        loadingText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        loadingText.setMaxWidth(dp(260));
+        loadingText.setMaxLines(2);
+        loadingText.setEllipsize(TextUtils.TruncateAt.END);
+        loadingCopy.addView(loadingText);
+        loadingBox.addView(loadingCopy);
 
         // Apple TV Minimalist OSD Container
         osdRoot = new FrameLayout(this);
-        osdRoot.setPadding(dp(32), dp(22), dp(32), dp(24));
+        osdRoot.setPadding(dp(28), dp(18), dp(28), dp(22));
+        osdRoot.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] {Color.parseColor("#85000000"), Color.TRANSPARENT, Color.parseColor("#DA000000")}));
 
         // Top Bar inside OSD
         LinearLayout topBar = new LinearLayout(this);
+        osdTopBar = topBar;
         topBar.setOrientation(LinearLayout.HORIZONTAL);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
 
+        btnTopClose = createTransportButton("close", false, "Encerrar reprodução", v -> closeNativePlayer());
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(dp(42), dp(42));
+        closeParams.rightMargin = dp(14);
+        topBar.addView(btnTopClose, closeParams);
+
         osdBadgeLive = new TextView(this);
-        osdBadgeLive.setText("● AO VIVO");
+        osdBadgeLive.setText(R.string.live_badge);
         osdBadgeLive.setTextColor(Color.WHITE);
-        osdBadgeLive.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        osdBadgeLive.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         osdBadgeLive.setTypeface(Typeface.DEFAULT_BOLD);
         osdBadgeLive.setPadding(dp(12), dp(5), dp(12), dp(5));
         osdBadgeLive.setBackground(makeRoundedRect(Color.parseColor("#FF3B30"), dp(99), 0, 0));
@@ -258,12 +322,20 @@ public class MainActivity extends AppCompatActivity {
         topBar.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
 
         backHintView = new TextView(this);
-        backHintView.setText("VOLTAR: Limpar Tela  •  OK: Canais");
-        backHintView.setTextColor(Color.parseColor("#D0D4E0"));
-        backHintView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        backHintView.setPadding(dp(14), dp(6), dp(14), dp(6));
-        backHintView.setBackground(makeRoundedRect(Color.parseColor("#D912151E"), dp(99), 1, Color.parseColor("#28FFFFFF")));
-        topBar.addView(backHintView);
+        backHintView.setText(R.string.remote_hint);
+        backHintView.setTextColor(Color.parseColor("#B3FFFFFF"));
+        backHintView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+        backHintView.setSingleLine(true);
+        backHintView.setMaxWidth(dp(Math.max(100, getResources().getConfiguration().screenWidthDp - 290)));
+        backHintView.setEllipsize(TextUtils.TruncateAt.END);
+        backHintView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        backHintView.setPadding(dp(12), dp(6), 0, dp(6));
+        LinearLayout.LayoutParams bhParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        bhParams.rightMargin = dp(8);
+        topBar.addView(backHintView, bhParams);
 
         osdRoot.addView(topBar, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -275,18 +347,18 @@ public class MainActivity extends AppCompatActivity {
         channelDrawerBox = new LinearLayout(this);
         channelDrawerBox.setOrientation(LinearLayout.VERTICAL);
         channelDrawerBox.setPadding(dp(14), dp(14), dp(14), dp(14));
-        channelDrawerBox.setBackground(makeRoundedRect(Color.parseColor("#F010131D"), dp(18), dp(1), Color.parseColor("#33FFFFFF")));
+        channelDrawerBox.setBackground(makeGlassBackground(false, dp(24)));
         channelDrawerBox.setVisibility(View.GONE);
 
         TextView drawerTitle = new TextView(this);
-        drawerTitle.setText("CANAIS DA CATEGORIA");
-        drawerTitle.setTextColor(Color.parseColor("#60A5FA"));
+        drawerTitle.setText(R.string.channels_title);
+        drawerTitle.setTextColor(Color.WHITE);
         drawerTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         drawerTitle.setTypeface(Typeface.DEFAULT_BOLD);
         channelDrawerBox.addView(drawerTitle);
 
         TextView drawerSub = new TextView(this);
-        drawerSub.setText("Selecione para trocar imediatamente");
+        drawerSub.setText(R.string.channels_hint);
         drawerSub.setTextColor(Color.parseColor("#9CA3AF"));
         drawerSub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
         LinearLayout.LayoutParams dsParams = new LinearLayout.LayoutParams(
@@ -310,21 +382,23 @@ public class MainActivity extends AppCompatActivity {
                 1f
         ));
 
+        int screenWidthDp = getResources().getConfiguration().screenWidthDp;
+        int screenHeightDp = getResources().getConfiguration().screenHeightDp;
         FrameLayout.LayoutParams drawerParams = new FrameLayout.LayoutParams(
-                dp(300),
-                dp(310),
+                dp(Math.min(264, Math.max(180, screenWidthDp / 3))),
+                dp(Math.min(220, Math.max(110, screenHeightDp - 230))),
                 Gravity.START | Gravity.TOP
         );
-        drawerParams.topMargin = dp(48);
+        drawerParams.topMargin = dp(56);
         osdRoot.addView(channelDrawerBox, drawerParams);
 
-        // Bottom Sheet inside OSD
+        // Titles and timeline sit directly over the video, above the options capsules.
         LinearLayout bottomSheet = new LinearLayout(this);
+        osdBottomSheet = bottomSheet;
         bottomSheet.setOrientation(LinearLayout.VERTICAL);
-        bottomSheet.setPadding(dp(22), dp(16), dp(22), dp(16));
-        bottomSheet.setBackground(makeRoundedRect(Color.parseColor("#EB12151F"), dp(22), dp(1), Color.parseColor("#33FFFFFF")));
+        bottomSheet.setPadding(0, dp(12), 0, 0);
 
-        // Header Row (Title + Subtitle/EPG on Left, Time on Right)
+        // Subtitle/EPG and title, matching the visual hierarchy of the web player.
         LinearLayout headerRow = new LinearLayout(this);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -333,55 +407,57 @@ public class MainActivity extends AppCompatActivity {
         titlesCol.setOrientation(LinearLayout.VERTICAL);
 
         osdTitleView = new TextView(this);
-        osdTitleView.setText("KS TV-Stream");
+        osdTitleView.setText(R.string.app_name);
         osdTitleView.setTextColor(Color.WHITE);
-        osdTitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        osdTitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
         osdTitleView.setTypeface(Typeface.DEFAULT_BOLD);
         osdTitleView.setSingleLine(true);
         osdTitleView.setEllipsize(TextUtils.TruncateAt.END);
-        titlesCol.addView(osdTitleView);
 
         osdSubtitleView = new TextView(this);
-        osdSubtitleView.setText("Reprodução Limpa");
-        osdSubtitleView.setTextColor(Color.parseColor("#9DA3B4"));
+        osdSubtitleView.setText(R.string.playback_subtitle);
+        osdSubtitleView.setTextColor(Color.parseColor("#D9FFFFFF"));
         osdSubtitleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         osdSubtitleView.setSingleLine(true);
         osdSubtitleView.setEllipsize(TextUtils.TruncateAt.END);
         titlesCol.addView(osdSubtitleView);
+        titlesCol.addView(osdTitleView);
 
         headerRow.addView(titlesCol, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-
-        osdTimeView = new TextView(this);
-        osdTimeView.setText("00:00 / 00:00");
-        osdTimeView.setTextColor(Color.WHITE);
-        osdTimeView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        osdTimeView.setTypeface(Typeface.DEFAULT_BOLD);
-        headerRow.addView(osdTimeView);
 
         bottomSheet.addView(headerRow);
 
         // Interactive Movie Timeline / SeekBar ("barra de tempo")
         seekBarWrap = new LinearLayout(this);
-        seekBarWrap.setOrientation(LinearLayout.VERTICAL);
-        seekBarWrap.setPadding(dp(8), dp(8), dp(8), dp(8));
+        seekBarWrap.setOrientation(LinearLayout.HORIZONTAL);
+        seekBarWrap.setGravity(Gravity.CENTER_VERTICAL);
+        seekBarWrap.setPadding(0, dp(3), 0, dp(3));
         LinearLayout.LayoutParams sbWrapParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        sbWrapParams.topMargin = dp(8);
-        sbWrapParams.bottomMargin = dp(4);
-        seekBarWrap.setBackground(makeRoundedRect(Color.parseColor("#18FFFFFF"), dp(10), dp(1), Color.TRANSPARENT));
+        sbWrapParams.topMargin = dp(6);
+        sbWrapParams.bottomMargin = dp(6);
+
+        osdTimeView = createTimelineLabel("00:00");
+        seekBarWrap.addView(osdTimeView, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
 
         osdSeekBar = new SeekBar(this);
         osdSeekBar.setMax(1000);
         osdSeekBar.setProgress(0);
+        osdSeekBar.setId(View.generateViewId());
+        osdSeekBar.setContentDescription("Posição da reprodução. Use as setas para avançar ou voltar 15 segundos.");
+        osdSeekBar.setProgressTintList(ColorStateList.valueOf(Color.WHITE));
+        osdSeekBar.setProgressBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#66FFFFFF")));
+        osdSeekBar.setThumbTintList(ColorStateList.valueOf(Color.WHITE));
         osdSeekBar.setFocusable(true);
         osdSeekBar.setFocusableInTouchMode(true);
         osdSeekBar.setOnFocusChangeListener((v, hasFocus) -> {
             if (hasFocus) {
-                seekBarWrap.setBackground(makeRoundedRect(Color.parseColor("#2EFFFFFF"), dp(10), dp(2), Color.WHITE));
+                seekBarWrap.setBackground(makeRoundedRect(Color.parseColor("#1AFFFFFF"), dp(12), dp(1), Color.parseColor("#B3FFFFFF")));
+                resetOsdTimer();
             } else {
-                seekBarWrap.setBackground(makeRoundedRect(Color.parseColor("#18FFFFFF"), dp(10), dp(1), Color.TRANSPARENT));
+                seekBarWrap.setBackgroundColor(Color.TRANSPARENT);
             }
         });
         osdSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -392,7 +468,7 @@ public class MainActivity extends AppCompatActivity {
                     if (dur > 0) {
                         long newPos = (dur * progress) / 1000L;
                         exoPlayer.seekTo(newPos);
-                        osdTimeView.setText(formatMs(newPos) + " / " + formatMs(dur));
+                        updateNativeTimeline(newPos, dur);
                     }
                     resetOsdTimer();
                 }
@@ -418,47 +494,54 @@ public class MainActivity extends AppCompatActivity {
         });
 
         seekBarWrap.addView(osdSeekBar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
+                0,
+                dp(32),
+                1f
         ));
+        osdRemainingTimeView = createTimelineLabel("−00:00");
+        osdRemainingTimeView.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        seekBarWrap.addView(osdRemainingTimeView, new LinearLayout.LayoutParams(dp(68), ViewGroup.LayoutParams.WRAP_CONTENT));
         bottomSheet.addView(seekBarWrap, sbWrapParams);
 
-        // Control Buttons Row (Monochrome symbols only — no orange emoji!)
+        // Control Buttons Scroll Row (Smooth touch pan & D-Pad focus scroll)
+        HorizontalScrollView controlsScroll = new HorizontalScrollView(this);
+        controlsScroll.setHorizontalScrollBarEnabled(false);
+        controlsScroll.setFillViewport(true);
+        controlsScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+
         LinearLayout controlsRow = new LinearLayout(this);
         controlsRow.setOrientation(LinearLayout.HORIZONTAL);
         controlsRow.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams ctrlRowParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
+        FrameLayout.LayoutParams ctrlRowParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        ctrlRowParams.topMargin = dp(8);
 
         btnChannelsDrawer = createOsdButton("☰ Canais", false, v -> {
             resetOsdTimer();
-            if (channelDrawerBox.getVisibility() == View.VISIBLE && activeChannelButtonView != null) {
-                activeChannelButtonView.requestFocus();
+            boolean opening = channelDrawerBox.getVisibility() != View.VISIBLE;
+            setNativeDrawerVisible(opening);
+            if (opening) {
+                focusNativeChannelDrawer();
             } else {
-                channelDrawerBox.setVisibility(View.VISIBLE);
-                if (activeChannelButtonView != null) {
-                    activeChannelButtonView.requestFocus();
-                }
+                btnChannelsDrawer.requestFocus();
             }
         });
 
-        btnPrevCh = createOsdButton("|◀ Canal Ant.", false, v -> {
+        btnPrevCh = createTransportButton("previous", false, "Canal anterior", v -> {
             resetOsdTimer();
             runJs("if(window.onNativeStepChannel) window.onNativeStepChannel(-1);");
         });
 
-        btnRw15 = createOsdButton("↺ -15s", false, v -> {
+        btnRw15 = createTransportButton("rewind", false, "Voltar 15 segundos", v -> {
             seekRelativeMs(-15000L);
         });
 
-        btnPlayPause = createOsdButton("❚❚ Pausar", true, v -> {
+        btnPlayPause = createTransportButton("pause", true, "Pausar", v -> {
             toggleNativePlayPause();
         });
 
-        btnFf15 = createOsdButton("↻ +15s", false, v -> {
+        btnFf15 = createTransportButton("forward", false, "Avançar 15 segundos", v -> {
             seekRelativeMs(15000L);
         });
 
@@ -466,43 +549,42 @@ public class MainActivity extends AppCompatActivity {
             seekRelativeMs(60000L);
         });
 
-        btnNextCh = createOsdButton("▶| Próx. Canal", false, v -> {
+        btnNextCh = createTransportButton("next", false, "Próximo canal", v -> {
             resetOsdTimer();
             runJs("if(window.onNativeStepChannel) window.onNativeStepChannel(1);");
         });
 
-        btnMiniPlayer = createOsdButton("⧉ Mini Player", false, v -> {
+        btnMiniPlayer = createOsdButton("Mini Player", false, v -> {
             enterNativeMiniPlayer();
         });
 
-        btnAspect = createOsdButton("⛶ Tela: Padrão", false, v -> {
+        btnAspect = createOsdButton("Tela: Padrão", false, v -> {
             cycleNativeAspect();
         });
 
-        btnHideOsd = createOsdButton("✕ Ocultar", false, v -> {
+        btnHideOsd = createOsdButton("Tela limpa", false, v -> {
             hideNativeOsd();
         });
 
-        btnExitPlayer = createOsdButton("Sair", false, v -> {
+        btnExitPlayer = createOsdButton("Encerrar", false, v -> {
             closeNativePlayer();
         });
 
         controlsRow.addView(btnChannelsDrawer);
-        controlsRow.addView(btnPrevCh);
-        controlsRow.addView(btnRw15);
-        controlsRow.addView(btnPlayPause);
-        controlsRow.addView(btnFf15);
         controlsRow.addView(btnFf60);
-        controlsRow.addView(btnNextCh);
         controlsRow.addView(btnMiniPlayer);
         controlsRow.addView(btnAspect);
         controlsRow.addView(btnHideOsd);
-
-        View flexSpace = new View(this);
-        controlsRow.addView(flexSpace, new LinearLayout.LayoutParams(0, 1, 1f));
         controlsRow.addView(btnExitPlayer);
 
-        bottomSheet.addView(controlsRow, ctrlRowParams);
+        controlsScroll.addView(controlsRow, ctrlRowParams);
+
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        scrollParams.topMargin = dp(8);
+        bottomSheet.addView(controlsScroll, scrollParams);
 
         FrameLayout.LayoutParams sheetParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -511,25 +593,224 @@ public class MainActivity extends AppCompatActivity {
         );
         osdRoot.addView(bottomSheet, sheetParams);
 
+        // Large transport controls remain reachable by touch and Android's spatial D-pad focus.
+        transportControls = new LinearLayout(this);
+        transportControls.setOrientation(LinearLayout.HORIZONTAL);
+        transportControls.setGravity(Gravity.CENTER_VERTICAL);
+        transportControls.addView(btnPrevCh);
+        transportControls.addView(btnRw15);
+        transportControls.addView(btnPlayPause);
+        transportControls.addView(btnFf15);
+        transportControls.addView(btnNextCh);
+        FrameLayout.LayoutParams transportParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.CENTER
+        );
+        transportParams.bottomMargin = dp(screenHeightDp < 360 ? 56 : screenHeightDp < 420 ? 44 : 16);
+        osdRoot.addView(transportControls, transportParams);
+
         nativePlayerRoot.addView(osdRoot, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
         ));
+        // Last child: the status can never be dimmed or covered by the OSD.
+        nativePlayerRoot.addView(loadingBox, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.START
+        ));
+        View.OnLayoutChangeListener loadingPositionListener = (view, l, t, r, b, oldL, oldT, oldR, oldB) -> positionNativeLoading();
+        loadingBox.addOnLayoutChangeListener(loadingPositionListener);
+        transportControls.addOnLayoutChangeListener(loadingPositionListener);
+        osdBottomSheet.addOnLayoutChangeListener(loadingPositionListener);
+
+        // Touch & Tap Support for Native Player Controls
+        View.OnClickListener toggleOsdListener = v -> {
+            if (!isNativePlayerOpen) return;
+            long now = System.currentTimeMillis();
+            if (now - lastNativeOsdToggleTime < 400) return;
+            lastNativeOsdToggleTime = now;
+
+            if (isMiniPlayerMode) {
+                expandMiniPlayerToFullscreen();
+                return;
+            }
+            if (osdRoot.getVisibility() == View.VISIBLE) {
+                hideNativeOsd();
+            } else {
+                showNativeOsd(false);
+            }
+        };
+
+        playerView.setOnClickListener(toggleOsdListener);
+        nativePlayerRoot.setOnClickListener(toggleOsdListener);
+
+        osdRoot.setOnClickListener(v -> {
+            long now = System.currentTimeMillis();
+            if (now - lastNativeOsdToggleTime < 400) return;
+            lastNativeOsdToggleTime = now;
+            hideNativeOsd();
+        });
+        topBar.setOnClickListener(v -> resetOsdTimer());
+        bottomSheet.setOnClickListener(v -> resetOsdTimer());
+        channelDrawerBox.setOnClickListener(v -> resetOsdTimer());
+        transportControls.setOnClickListener(v -> resetOsdTimer());
+        // These surfaces consume background taps but should never become empty D-pad stops.
+        nativePlayerRoot.setFocusable(false);
+        playerView.setFocusable(false);
+        osdRoot.setFocusable(false);
+        topBar.setFocusable(false);
+        bottomSheet.setFocusable(false);
+        channelDrawerBox.setFocusable(false);
+        transportControls.setFocusable(false);
+    }
+
+    private void showNativeLoading(String title) {
+        if (!isNativePlayerOpen || isMiniPlayerMode || !isActivityVisible) return;
+        loadingTitle.setText(title);
+        loadingSpinner.setVisibility(View.VISIBLE);
+        loadingBox.setVisibility(View.VISIBLE);
+        if (!nativeLoadingActive) {
+            nativeLoadingActive = true;
+            loadingPhraseIndex = 0;
+            loadingText.setText(LOADING_PHRASES[loadingPhraseIndex]);
+            uiHandler.removeCallbacks(loadingPhraseRunnable);
+            uiHandler.postDelayed(loadingPhraseRunnable, LOADING_PHRASE_INTERVAL_MS);
+        }
+        loadingBox.post(this::positionNativeLoading);
+    }
+
+    private void hideNativeLoading() {
+        nativeLoadingActive = false;
+        uiHandler.removeCallbacks(loadingPhraseRunnable);
+        if (loadingBox != null) loadingBox.setVisibility(View.GONE);
+        if (transportControls != null) {
+            transportControls.setTranslationY(0);
+            transportControls.setScaleX(1);
+            transportControls.setScaleY(1);
+        }
+    }
+
+    private void showNativeLoadingError() {
+        hideNativeLoading();
+        if (!isNativePlayerOpen || isMiniPlayerMode || !isActivityVisible) return;
+        loadingSpinner.setVisibility(View.GONE);
+        loadingTitle.setText(R.string.signal_unavailable);
+        loadingText.setText(R.string.signal_error);
+        loadingBox.setVisibility(View.VISIBLE);
+        loadingBox.post(this::positionNativeLoading);
+    }
+
+    private void positionNativeLoading() {
+        if (loadingBox == null || loadingBox.getVisibility() != View.VISIBLE || isMiniPlayerMode
+                || transportControls == null || transportControls.getHeight() == 0 || loadingBox.getHeight() == 0) return;
+
+        // Use measured bounds so compact screens reserve a real gap before the titles.
+        int gap = dp(8);
+        int topLimit = osdRoot.getTop() + osdTopBar.getBottom() + dp(6);
+        int bottomLimit = osdRoot.getTop() + osdBottomSheet.getTop() - gap;
+        float availableTransportHeight = bottomLimit - topLimit - loadingBox.getHeight() - gap;
+        float scale = Math.max(.86f, Math.min(1f, availableTransportHeight / transportControls.getHeight()));
+        transportControls.setScaleX(scale);
+        transportControls.setScaleY(scale);
+        float visualTop = osdRoot.getTop() + transportControls.getTop() + transportControls.getHeight() * (1 - scale) / 2;
+        float visualBottom = osdRoot.getTop() + transportControls.getBottom() - transportControls.getHeight() * (1 - scale) / 2;
+        float shift = Math.min(0, bottomLimit - loadingBox.getHeight() - gap - visualBottom);
+        shift = Math.max(shift, topLimit - visualTop);
+        transportControls.setTranslationY(shift);
+
+        int statusTop = Math.round(visualBottom + shift + gap);
+        int centerX = osdRoot.getLeft() + transportControls.getLeft() + transportControls.getWidth() / 2;
+        int statusLeft = Math.max(dp(16), Math.min(nativePlayerRoot.getWidth() - loadingBox.getWidth() - dp(16), centerX - loadingBox.getWidth() / 2));
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) loadingBox.getLayoutParams();
+        if (params.topMargin != statusTop || params.leftMargin != statusLeft) {
+            params.topMargin = statusTop;
+            params.leftMargin = statusLeft;
+            loadingBox.setLayoutParams(params);
+        }
+    }
+
+    private TextView createTimelineLabel(String text) {
+        TextView label = new TextView(this);
+        label.setText(text);
+        label.setTextColor(Color.parseColor("#B3FFFFFF"));
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        label.setTypeface(Typeface.MONOSPACE);
+        label.setSingleLine(true);
+        return label;
+    }
+
+    private void updateNativeTimeline(long positionMs, long durationMs) {
+        osdTimeView.setText(formatMs(positionMs));
+        osdRemainingTimeView.setText(durationMs > 0 ? "−" + formatMs(Math.max(0, durationMs - positionMs)) : "--:--");
+    }
+
+    private void setNativeDrawerVisible(boolean visible) {
+        channelDrawerBox.setVisibility(visible ? View.VISIBLE : View.GONE);
+        FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) transportControls.getLayoutParams();
+        params.gravity = visible ? Gravity.END | Gravity.CENTER_VERTICAL : Gravity.CENTER;
+        transportControls.setLayoutParams(params);
+        View channel = activeChannelButtonView != null ? activeChannelButtonView : channelListContainer.getChildAt(0);
+        btnPrevCh.setNextFocusLeftId(visible && channel != null ? channel.getId() : View.NO_ID);
+    }
+
+    private void focusNativeChannelDrawer() {
+        final View channel = activeChannelButtonView != null ? activeChannelButtonView : channelListContainer.getChildAt(0);
+        if (channel == null) {
+            btnPlayPause.requestFocus();
+            return;
+        }
+        channelScrollView.post(() -> {
+            if (channel.isShown()) {
+                channelScrollView.scrollTo(0, Math.max(0, channel.getTop() - dp(70)));
+                channel.requestFocus();
+            }
+        });
+    }
+
+    private Button createTransportButton(String kind, boolean primary, String description, View.OnClickListener listener) {
+        PlayerControlButton button = new PlayerControlButton(kind);
+        button.setContentDescription(description);
+        button.setId(View.generateViewId());
+        button.setPadding(0, 0, 0, 0);
+        button.setMinimumWidth(0);
+        button.setMinimumHeight(0);
+        button.setMinWidth(0);
+        button.setMinHeight(0);
+        button.setFocusable(true);
+        button.setFocusableInTouchMode(true);
+        button.setStateListAnimator(null);
+        styleOsdButton(button, primary, false);
+        button.setOnFocusChangeListener((view, focused) -> {
+            styleOsdButton(button, primary, focused);
+            if (focused) resetOsdTimer();
+        });
+        button.setOnClickListener(listener);
+        boolean compact = getResources().getConfiguration().screenHeightDp < 420;
+        int size = dp(primary ? (compact ? 72 : 86) : (compact ? 52 : 60));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(size, size);
+        params.leftMargin = dp(9);
+        params.rightMargin = dp(9);
+        button.setLayoutParams(params);
+        return button;
     }
 
     private Button createOsdButton(String label, boolean isPrimary, View.OnClickListener onClick) {
         Button btn = new Button(this);
         btn.setText(label);
         btn.setAllCaps(false);
+        btn.setId(View.generateViewId());
         btn.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         btn.setTypeface(Typeface.DEFAULT_BOLD);
-        btn.setPadding(dp(13), dp(7), dp(13), dp(7));
-        btn.setMinimumHeight(dp(36));
+        btn.setPadding(dp(17), dp(9), dp(17), dp(9));
+        btn.setMinimumHeight(dp(40));
         btn.setMinimumWidth(0);
-        btn.setMinHeight(dp(36));
+        btn.setMinHeight(dp(40));
         btn.setMinWidth(0);
         btn.setFocusable(true);
         btn.setFocusableInTouchMode(true);
+        btn.setStateListAnimator(null);
 
         styleOsdButton(btn, isPrimary, false);
 
@@ -543,7 +824,7 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT
         );
-        lp.rightMargin = dp(6);
+        lp.rightMargin = dp(8);
         btn.setLayoutParams(lp);
         return btn;
     }
@@ -552,12 +833,95 @@ public class MainActivity extends AppCompatActivity {
         if (focused) {
             btn.setTextColor(Color.BLACK);
             btn.setBackground(makeRoundedRect(Color.WHITE, dp(99), dp(2), Color.WHITE));
-        } else if (isPrimary) {
-            btn.setTextColor(Color.WHITE);
-            btn.setBackground(makeRoundedRect(Color.parseColor("#38FFFFFF"), dp(99), dp(1), Color.parseColor("#66FFFFFF")));
         } else {
-            btn.setTextColor(Color.parseColor("#E5E7EB"));
-            btn.setBackground(makeRoundedRect(Color.parseColor("#1FFFFFFF"), dp(99), dp(1), Color.parseColor("#2EFFFFFF")));
+            btn.setTextColor(Color.WHITE);
+            btn.setBackground(makeGlassBackground(isPrimary, dp(99)));
+        }
+        btn.invalidate();
+    }
+
+    private GradientDrawable makeGlassBackground(boolean primary, int radius) {
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[] {Color.parseColor(primary ? "#E63D3D40" : "#E6303033"), Color.parseColor("#E61D1D20")});
+        background.setCornerRadius(radius);
+        background.setStroke(dp(1), Color.parseColor(primary ? "#4DFFFFFF" : "#2EFFFFFF"));
+        return background;
+    }
+
+    // Draw transport symbols ourselves so they never become colored emoji on Android/Fire OS.
+    private class PlayerControlButton extends AppCompatButton {
+        private String kind;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path iconPath = new Path();
+        private final RectF iconBounds = new RectF();
+
+        PlayerControlButton(String controlKind) {
+            super(MainActivity.this);
+            kind = controlKind;
+        }
+
+        void setKind(String controlKind) {
+            kind = controlKind;
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            float cx = getWidth() / 2f;
+            float cy = getHeight() / 2f;
+            float unit = Math.min(getWidth(), getHeight()) * 0.23f;
+            paint.setColor(getCurrentTextColor());
+            paint.setStrokeWidth(dp(2));
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStyle(Paint.Style.FILL);
+            if ("pause".equals(kind)) {
+                canvas.drawRoundRect(cx - unit * .72f, cy - unit, cx - unit * .2f, cy + unit, dp(2), dp(2), paint);
+                canvas.drawRoundRect(cx + unit * .2f, cy - unit, cx + unit * .72f, cy + unit, dp(2), dp(2), paint);
+            } else if ("play".equals(kind)) {
+                Path triangle = iconPath;
+                triangle.reset();
+                triangle.moveTo(cx - unit * .55f, cy - unit);
+                triangle.lineTo(cx + unit, cy);
+                triangle.lineTo(cx - unit * .55f, cy + unit);
+                triangle.close();
+                canvas.drawPath(triangle, paint);
+            } else if ("close".equals(kind)) {
+                paint.setStyle(Paint.Style.STROKE);
+                canvas.drawLine(cx - unit * .7f, cy - unit * .7f, cx + unit * .7f, cy + unit * .7f, paint);
+                canvas.drawLine(cx + unit * .7f, cy - unit * .7f, cx - unit * .7f, cy + unit * .7f, paint);
+            } else if ("previous".equals(kind) || "next".equals(kind)) {
+                float direction = "next".equals(kind) ? 1f : -1f;
+                Path triangle = iconPath;
+                triangle.reset();
+                triangle.moveTo(cx - direction * unit * .65f, cy - unit * .8f);
+                triangle.lineTo(cx + direction * unit * .5f, cy);
+                triangle.lineTo(cx - direction * unit * .65f, cy + unit * .8f);
+                triangle.close();
+                canvas.drawPath(triangle, paint);
+                paint.setStyle(Paint.Style.STROKE);
+                canvas.drawLine(cx + direction * unit * .85f, cy - unit * .8f, cx + direction * unit * .85f, cy + unit * .8f, paint);
+            } else {
+                float direction = "forward".equals(kind) ? 1f : -1f;
+                canvas.save();
+                canvas.scale(direction, 1f, cx, cy);
+                paint.setStyle(Paint.Style.STROKE);
+                iconBounds.set(cx - unit, cy - unit, cx + unit, cy + unit);
+                canvas.drawArc(iconBounds, -70, 310, false, paint);
+                Path arrow = iconPath;
+                arrow.reset();
+                arrow.moveTo(cx + unit * .05f, cy - unit * 1.3f);
+                arrow.lineTo(cx + unit * .45f, cy - unit * .93f);
+                arrow.lineTo(cx - unit * .05f, cy - unit * .7f);
+                canvas.drawPath(arrow, paint);
+                canvas.restore();
+                paint.setStyle(Paint.Style.FILL);
+                paint.setTextSize(unit * .95f);
+                paint.setTypeface(Typeface.DEFAULT_BOLD);
+                paint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText("15", cx, cy - (paint.ascent() + paint.descent()) / 2f, paint);
+            }
         }
     }
 
@@ -577,6 +941,8 @@ public class MainActivity extends AppCompatActivity {
                     final boolean isCurrent = (itemIdx == currentIdx);
 
                     Button chBtn = new Button(this);
+                    chBtn.setId(View.generateViewId());
+                    chBtn.setNextFocusRightId(btnPrevCh.getId());
                     String label = (isCurrent ? "● " : "") + (itemIdx + 1) + ". " + name;
                     if (epg != null && !epg.isEmpty()) {
                         label += "\n   " + epg;
@@ -599,6 +965,16 @@ public class MainActivity extends AppCompatActivity {
                     chBtn.setOnFocusChangeListener((v, hasFocus) -> {
                         styleDrawerChannelButton(chBtn, isCurrent, hasFocus);
                         if (hasFocus) resetOsdTimer();
+                    });
+
+                    chBtn.setOnKeyListener((v, keyCode, event) -> {
+                        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && event.getAction() == KeyEvent.ACTION_DOWN) {
+                            setNativeDrawerVisible(false);
+                            btnPrevCh.requestFocus();
+                            resetOsdTimer();
+                            return true;
+                        }
+                        return false;
                     });
 
                     chBtn.setOnClickListener(v -> {
@@ -683,36 +1059,38 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPlaybackStateChanged(int playbackState) {
                 if (playbackState == Player.STATE_BUFFERING) {
-                    if (!isMiniPlayerMode) {
-                        loadingBox.setVisibility(View.VISIBLE);
-                        loadingText.setText("Carregando vídeo...");
-                    }
+                    showNativeLoading("Só um instante");
                 } else if (playbackState == Player.STATE_READY) {
-                    loadingBox.setVisibility(View.GONE);
+                    hideNativeLoading();
                 } else if (playbackState == Player.STATE_ENDED && !isCurrentStreamLive) {
+                    hideNativeLoading();
                     showNativeOsd(false);
+                } else if (playbackState == Player.STATE_IDLE && exoPlayer != null && exoPlayer.getPlayerError() != null) {
+                    showNativeLoadingError();
+                } else if (playbackState == Player.STATE_IDLE || playbackState == Player.STATE_ENDED) {
+                    hideNativeLoading();
                 }
             }
 
             @Override
             public void onRenderedFirstFrame() {
-                loadingBox.setVisibility(View.GONE);
+                hideNativeLoading();
             }
 
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
-                btnPlayPause.setText(isPlaying ? "❚❚ Pausar" : "▶ Reproduzir");
+                ((PlayerControlButton) btnPlayPause).setKind(isPlaying ? "pause" : "play");
+                btnPlayPause.setContentDescription(isPlaying ? "Pausar" : "Reproduzir");
                 if (isPlaying) {
-                    loadingBox.setVisibility(View.GONE);
+                    hideNativeLoading();
                     resetOsdTimer();
                 }
             }
 
             @Override
             public void onPlayerError(@NonNull PlaybackException error) {
-                if (!isMiniPlayerMode) {
-                    loadingBox.setVisibility(View.VISIBLE);
-                    loadingText.setText("Sinal indisponível no momento. Aperte VOLTAR.");
+                showNativeLoadingError();
+                if (isNativePlayerOpen && !isMiniPlayerMode && isActivityVisible) {
                     showNativeOsd(false);
                 }
             }
@@ -721,6 +1099,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void openNativePlayerUi(final String streamUrl, final String title, final String subtitle, final boolean isLive) {
         runOnUiThread(() -> {
+            hideNativeLoading();
             isNativePlayerOpen = true;
             isCurrentStreamLive = isLive;
 
@@ -732,12 +1111,12 @@ public class MainActivity extends AppCompatActivity {
             osdSubtitleView.setText(subtitle != null ? subtitle : "");
 
             if (isLive) {
-                osdBadgeLive.setText("● AO VIVO");
+                osdBadgeLive.setText(R.string.live_badge);
                 osdBadgeLive.setBackground(makeRoundedRect(Color.parseColor("#FF3B30"), dp(99), 0, 0));
-                backHintView.setText("OK: Lista de Canais  •  VOLTAR: Limpar / Mini Player");
+                backHintView.setText(R.string.live_remote_hint);
                 osdTimeView.setVisibility(View.GONE);
                 seekBarWrap.setVisibility(View.GONE);
-                channelDrawerBox.setVisibility(View.VISIBLE);
+                setNativeDrawerVisible(false);
                 btnChannelsDrawer.setVisibility(View.VISIBLE);
                 btnPrevCh.setVisibility(View.VISIBLE);
                 btnNextCh.setVisibility(View.VISIBLE);
@@ -746,14 +1125,14 @@ public class MainActivity extends AppCompatActivity {
                 btnFf15.setVisibility(View.GONE);
                 btnFf60.setVisibility(View.GONE);
             } else {
-                osdBadgeLive.setText("KS TV-Stream • Cinema");
+                osdBadgeLive.setText(R.string.cinema_badge);
                 osdBadgeLive.setBackground(makeRoundedRect(Color.parseColor("#2A3042"), dp(99), dp(1), Color.parseColor("#38FFFFFF")));
-                backHintView.setText("Aperte VOLTAR para limpar a tela");
+                backHintView.setText(R.string.vod_remote_hint);
                 osdTimeView.setVisibility(View.VISIBLE);
-                osdTimeView.setText("00:00 / 00:00");
+                updateNativeTimeline(0, 0);
                 seekBarWrap.setVisibility(View.VISIBLE);
                 osdSeekBar.setProgress(0);
-                channelDrawerBox.setVisibility(View.GONE);
+                setNativeDrawerVisible(false);
                 btnChannelsDrawer.setVisibility(View.GONE);
                 btnPrevCh.setVisibility(View.GONE);
                 btnNextCh.setVisibility(View.GONE);
@@ -766,13 +1145,11 @@ public class MainActivity extends AppCompatActivity {
             // Hide WebView during fullscreen playback so 100% of GPU goes to video
             webView.setVisibility(View.GONE);
             nativePlayerRoot.setVisibility(View.VISIBLE);
-            loadingBox.setVisibility(View.VISIBLE);
-            loadingText.setText("Conectando ao sinal...");
-
             showNativeOsd(false);
 
             exoPlayer.stop();
             exoPlayer.clearMediaItems();
+            showNativeLoading("Conectando ao sinal");
             MediaItem mediaItem = MediaItem.fromUri(streamUrl);
             exoPlayer.setMediaItem(mediaItem);
             exoPlayer.prepare();
@@ -797,7 +1174,7 @@ public class MainActivity extends AppCompatActivity {
             if (!isNativePlayerOpen) return;
             isMiniPlayerMode = true;
             hideNativeOsd();
-            loadingBox.setVisibility(View.GONE);
+            hideNativeLoading();
 
             FrameLayout.LayoutParams pipLp = new FrameLayout.LayoutParams(
                     dp(288),
@@ -822,26 +1199,25 @@ public class MainActivity extends AppCompatActivity {
             restoreFullscreenLayout();
             webView.setVisibility(View.GONE);
             showNativeOsd(false);
+            if (exoPlayer != null && exoPlayer.getPlayerError() != null) {
+                showNativeLoadingError();
+            } else if (exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_BUFFERING) {
+                showNativeLoading("Só um instante");
+            }
         });
     }
 
     private void showNativeOsd(boolean focusChannelDrawer) {
         osdRoot.setVisibility(View.VISIBLE);
         if (isCurrentStreamLive) {
-            channelDrawerBox.setVisibility(View.VISIBLE);
-            if (focusChannelDrawer && activeChannelButtonView != null) {
-                channelScrollView.post(() -> {
-                    if (activeChannelButtonView != null) {
-                        int scrollY = Math.max(0, activeChannelButtonView.getTop() - dp(90));
-                        channelScrollView.scrollTo(0, scrollY);
-                        activeChannelButtonView.requestFocus();
-                    }
-                });
+            setNativeDrawerVisible(focusChannelDrawer);
+            if (focusChannelDrawer) {
+                focusNativeChannelDrawer();
             } else {
                 btnPlayPause.requestFocus();
             }
         } else {
-            channelDrawerBox.setVisibility(View.GONE);
+            setNativeDrawerVisible(false);
             btnPlayPause.requestFocus();
         }
         resetOsdTimer();
@@ -861,6 +1237,7 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             uiHandler.removeCallbacks(autoHideOsdRunnable);
             isNativePlayerOpen = false;
+            hideNativeLoading();
             if (isMiniPlayerMode) {
                 restoreFullscreenLayout();
             }
@@ -894,7 +1271,7 @@ public class MainActivity extends AppCompatActivity {
         }
         exoPlayer.seekTo(next);
         if (dur > 0) {
-            osdTimeView.setText(formatMs(next) + " / " + formatMs(dur));
+            updateNativeTimeline(next, dur);
             osdSeekBar.setProgress((int) ((next * 1000L) / dur));
         }
         resetOsdTimer();
@@ -903,13 +1280,13 @@ public class MainActivity extends AppCompatActivity {
     private void cycleNativeAspect() {
         if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_FIT) {
             currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM;
-            btnAspect.setText("⛶ Tela: Zoom");
+            btnAspect.setText(R.string.aspect_zoom);
         } else if (currentResizeMode == AspectRatioFrameLayout.RESIZE_MODE_ZOOM) {
             currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL;
-            btnAspect.setText("⛶ Tela: Esticar");
+            btnAspect.setText(R.string.aspect_fill);
         } else {
             currentResizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT;
-            btnAspect.setText("⛶ Tela: Padrão");
+            btnAspect.setText(R.string.aspect_default);
         }
         playerView.setResizeMode(currentResizeMode);
         resetOsdTimer();
@@ -925,14 +1302,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void hideSystemUi() {
         View decorView = getWindow().getDecorView();
-        decorView.setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        | View.SYSTEM_UI_FLAG_FULLSCREEN
-        );
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(getWindow(), decorView);
+        controller.hide(WindowInsetsCompat.Type.systemBars());
+        controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
     }
 
     @Override
@@ -1061,7 +1434,7 @@ public class MainActivity extends AppCompatActivity {
 
             Request req = new Request.Builder()
                     .url(url)
-                    .header("User-Agent", "IPTVSmartersPro/4.0 (AppleTV; tvOS 18.0)")
+                    .header("User-Agent", "KS-TV-Player/1.0")
                     .header("Accept", "application/json, text/plain, */*")
                     .build();
 
@@ -1114,12 +1487,20 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        isActivityVisible = true;
         hideSystemUi();
+        if (exoPlayer != null && exoPlayer.getPlayerError() != null) {
+            showNativeLoadingError();
+        } else if (exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_BUFFERING) {
+            showNativeLoading("Só um instante");
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
+        isActivityVisible = false;
+        hideNativeLoading();
         if (exoPlayer != null && exoPlayer.isPlaying()) {
             exoPlayer.pause();
         }
@@ -1127,6 +1508,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        hideNativeLoading();
         uiHandler.removeCallbacks(progressRunnable);
         uiHandler.removeCallbacks(autoHideOsdRunnable);
         if (exoPlayer != null) {

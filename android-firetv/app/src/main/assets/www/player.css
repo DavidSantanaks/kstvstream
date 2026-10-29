@@ -1,0 +1,568 @@
+/* KS TV Player: controls inspired by the supplied Apple player references. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.app-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.app-squircle-icon {
+  padding: 0;
+  overflow: hidden;
+  background: #111217;
+}
+
+.brand-glyph {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.player-osd {
+  --player-edge: 5.5vw;
+  --player-glass: linear-gradient(155deg, rgba(65, 65, 68, .78), rgba(30, 30, 32, .9) 58%);
+  padding: 5vh var(--player-edge) 5.5vh;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .48), transparent 26%, transparent 43%, rgba(0, 0, 0, .78));
+}
+
+.player-osd .osd-btn,
+.player-osd .osd-popover-close {
+  min-height: 44px;
+  color: #f5f5f7;
+  background: var(--player-glass);
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .12), 0 4px 16px rgba(0, 0, 0, .1);
+  font-size: 15px;
+  font-weight: 500;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.player-osd .osd-btn.tv-focused,
+.player-osd .osd-btn:focus-visible,
+.player-osd .osd-popover-close.tv-focused {
+  color: #fff !important;
+  background: linear-gradient(150deg, rgba(105, 105, 109, .96), rgba(54, 54, 57, .98)) !important;
+  border-color: rgba(255, 255, 255, .75) !important;
+  outline: 3px solid rgba(255, 255, 255, .85);
+  outline-offset: 4px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .16) !important;
+  transform: scale(1.04);
+}
+
+.osd-top-bar {
+  gap: 16px;
+  z-index: 2;
+}
+
+.osd-top-left,
+.osd-top-right {
+  gap: 12px;
+}
+
+.player-osd .osd-icon-button {
+  flex-shrink: 0;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.osd-icon-button > .icon-svg {
+  width: 25px;
+  height: 25px;
+}
+
+.player-osd .osd-back-btn {
+  margin: 0;
+  min-height: 54px;
+  padding: 12px 21px;
+}
+
+.osd-top-right .osd-meta-pill {
+  background: transparent;
+  border: 0;
+  font-weight: 500;
+  color: rgba(255, 255, 255, .7);
+  padding: 0;
+}
+
+.osd-live-badge {
+  background: rgba(255, 59, 48, .85);
+  margin: 0;
+}
+
+.osd-transport-controls {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7vw;
+}
+
+.player-osd .osd-transport-btn {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  width: clamp(68px, 8vw, 112px);
+  height: clamp(68px, 8vw, 112px);
+  min-height: 0;
+  border-radius: 50%;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.osd-transport-btn > .icon-svg {
+  width: 48%;
+  height: 48%;
+}
+
+.player-osd #btn-osd-playpause {
+  width: 120px;
+  height: 120px;
+  width: clamp(96px, 11vw, 156px);
+  height: clamp(96px, 11vw, 156px);
+  color: #fff;
+}
+
+.osd-transport-btn > .osd-skip-amount {
+  position: absolute;
+  left: 50%;
+  top: 51%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  font-size: clamp(12px, 1.4vw, 20px);
+  font-weight: 600;
+  letter-spacing: -.07em;
+  margin-left: 0;
+}
+
+.player-osd .osd-channel-drawer {
+  position: absolute;
+  top: 108px;
+  bottom: 220px;
+  left: var(--player-edge);
+  width: 350px;
+  max-width: 40vw;
+  max-height: none;
+  margin: 0;
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(52, 52, 54, .98), rgba(26, 26, 28, .98));
+  z-index: 4;
+}
+
+.channel-drawer-open .osd-transport-controls {
+  visibility: hidden;
+}
+
+.osd-bottom-wrap {
+  position: relative;
+  max-width: none;
+  width: 100%;
+  margin: auto 0 0;
+  z-index: 5;
+}
+
+.player-osd .osd-bottom-sheet {
+  padding: 0;
+  max-height: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.osd-media-header {
+  gap: 14px;
+  align-items: flex-end;
+  margin-bottom: 18px;
+}
+
+.osd-media-header .osd-logo {
+  width: 48px;
+  height: 48px;
+  margin: 0 0 3px;
+  border-radius: 10px;
+}
+
+.osd-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+.osd-titles p {
+  order: -1;
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-size: clamp(13px, 1.5vw, 19px);
+  font-weight: 500;
+  color: rgba(255, 255, 255, .8);
+}
+
+.osd-titles h2 {
+  font-size: 32px;
+  font-size: clamp(22px, 2.7vw, 38px);
+  font-weight: 650;
+  letter-spacing: -.025em;
+}
+
+.osd-time-display {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(235, 235, 245, .64);
+}
+
+.osd-time-display > span {
+  flex-shrink: 0;
+  min-width: 45px;
+}
+
+#osd-time-current {
+  color: inherit;
+}
+
+.osd-time-display > span:last-child {
+  text-align: right;
+}
+
+.osd-time-display .osd-progress-wrap {
+  flex: 1;
+  min-width: 0;
+  padding: 15px 0;
+  margin: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  touch-action: none;
+}
+
+.osd-progress-track {
+  height: 7px;
+  background: rgba(255, 255, 255, .32);
+}
+
+.osd-progress-fill {
+  min-width: 3px;
+  background: #f5f5f7;
+}
+
+.osd-progress-wrap.tv-focused {
+  outline: 2px solid rgba(255, 255, 255, .8);
+  outline-offset: 5px;
+}
+
+.osd-controls-row {
+  gap: 10px;
+  padding: 8px 6px;
+  margin-left: -6px;
+  width: calc(100% + 12px);
+}
+
+.osd-controls-row .osd-btn {
+  padding: 12px 21px;
+}
+
+.osd-clean-hint {
+  margin-left: auto;
+  padding-left: 14px;
+  font-size: 11px;
+  color: rgba(235, 235, 245, .38);
+  white-space: nowrap;
+}
+
+.osd-tracks-popover {
+  bottom: calc(100% + 16px);
+  width: 360px;
+  max-width: 100%;
+  max-height: 68vh;
+  padding: 16px;
+  border-radius: 28px;
+  background: radial-gradient(ellipse at 0 0, rgba(86, 86, 88, .98), rgba(31, 31, 33, .98) 65%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .13), 0 16px 48px rgba(0, 0, 0, .4);
+}
+
+.osd-popover-header {
+  padding: 0 0 11px 8px;
+  margin-bottom: 4px;
+}
+
+.osd-popover-header strong {
+  font-size: 14px;
+  color: rgba(255, 255, 255, .65);
+}
+
+.player-osd .osd-popover-close {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+
+.osd-options-list {
+  position: relative;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 5px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .25) transparent;
+}
+
+.osd-options-list::-webkit-scrollbar { width: 4px; }
+.osd-options-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .25); border-radius: 4px; }
+
+.osd-popover-list {
+  padding: 5px;
+  min-height: 0;
+}
+
+.player-osd .osd-option-row,
+.player-osd .osd-popover-item {
+  display: flex;
+  align-items: center;
+  min-height: 49px;
+  width: 100%;
+  padding: 11px 12px;
+  margin: 0 0 3px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  color: #f5f5f7;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.osd-option-row > .icon-svg {
+  width: 21px;
+  height: 21px;
+  margin-right: 9px;
+}
+
+.osd-option-row > span {
+  flex: 1;
+}
+
+.osd-option-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.osd-option-copy small {
+  color: rgba(235, 235, 245, .58);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.osd-option-row::after {
+  content: "›";
+  font-size: 25px;
+  font-weight: 400;
+  margin-left: 14px;
+  opacity: .7;
+}
+
+.osd-option-row#btn-osd-close {
+  color: #ffb4ac;
+}
+
+.osd-popover-item.active {
+  background: rgba(255, 255, 255, .12);
+}
+
+.player-osd .osd-popover-item.tv-focused,
+.player-osd .osd-popover-item:focus-visible {
+  background: rgba(255, 255, 255, .2);
+  color: #fff;
+  border-color: rgba(255, 255, 255, .75);
+  outline: 2px solid rgba(255, 255, 255, .6);
+  outline-offset: 1px;
+  transform: none;
+}
+
+.osd-popover-item .osd-popover-check {
+  order: 1;
+}
+
+.osd-popover-label-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.osd-popover-divider {
+  height: auto;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, .09);
+  margin: 8px 8px 3px;
+  padding-top: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(235, 235, 245, .5);
+}
+
+.osd-popover-sub {
+  font-size: 11px;
+  color: rgba(235, 235, 245, .6);
+  font-weight: 400;
+}
+
+@media (hover: hover) {
+  .player-osd .osd-btn:hover,
+  .player-osd .osd-popover-item:hover {
+    background: rgba(105, 105, 108, .7);
+  }
+}
+
+@media (max-width: 720px) {
+  .brand-glyph { width: 36px; height: 36px; }
+  .osd-top-left, .osd-top-right { gap: 8px; }
+  .osd-top-right .osd-meta-pill { display: none; }
+  .player-osd .osd-icon-button { width: 46px; height: 46px; }
+  .player-osd .osd-back-btn { min-height: 46px; padding: 9px 14px; font-size: 13px; }
+  .osd-media-header { margin-bottom: 10px; gap: 10px; }
+  .osd-media-header .osd-logo { display: none; }
+  .osd-clean-hint { display: none; }
+  .osd-controls-row .osd-btn { padding: 10px 16px; font-size: 13px; }
+  .osd-time-display { gap: 8px; font-size: 12px; }
+  .osd-time-display > span { min-width: 38px; }
+  .player-osd .osd-channel-drawer { top: 82px; bottom: 190px; max-width: 85vw; }
+  .osd-tracks-popover { max-height: 55vh; }
+}
+
+@media (max-height: 580px) {
+  .player-osd { padding-top: 18px; padding-bottom: 14px; }
+  .player-osd .osd-icon-button { width: 42px; height: 42px; min-height: 42px; }
+  .player-osd .osd-back-btn { min-height: 42px; padding: 8px 15px; }
+  .osd-transport-controls { top: 42%; gap: clamp(32px, 7vw, 96px); }
+  .player-osd .osd-transport-btn { width: 64px; height: 64px; }
+  .player-osd #btn-osd-playpause { width: 88px; height: 88px; }
+  .osd-transport-btn > .osd-skip-amount { font-size: 12px; }
+  .osd-titles h2 { font-size: 22px; }
+  .osd-titles p { font-size: 12px; margin-bottom: 3px; }
+  .osd-media-header { margin-bottom: 2px; }
+  .osd-time-display { margin-bottom: 0; }
+  .osd-controls-row { padding-top: 5px; padding-bottom: 5px; }
+  .osd-controls-row .osd-btn { min-height: 36px; padding: 8px 15px; font-size: 12px; }
+  .osd-clean-hint { display: none; }
+  .osd-tracks-popover { bottom: 45px; max-height: calc(100vh - 90px); }
+  .player-osd .osd-channel-drawer { top: 76px; bottom: 132px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-osd .osd-btn { transition: none; }
+}
+
+/* Connection feedback has its own layer and a reserved slot below transport. */
+.player-overlay {
+  --transport-center: 44%;
+  --play-button-half: 60px;
+}
+
+.player-overlay.is-loading {
+  --transport-center: 39%;
+}
+
+.player-overlay .osd-transport-controls {
+  top: var(--transport-center);
+}
+
+.player-overlay .player-spinner {
+  position: absolute;
+  z-index: 104;
+  top: calc(var(--transport-center) + var(--play-button-half) + 16px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  max-width: calc(100% - 40px);
+  min-height: 62px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 13px 17px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(43, 43, 47, .97), rgba(24, 24, 27, .97));
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 10px 28px rgba(0, 0, 0, .25);
+  text-align: left;
+  pointer-events: none;
+}
+
+.player-spinner .apple-spinner {
+  flex-shrink: 0;
+  width: 21px;
+  height: 21px;
+  margin: 0 15px 0 0;
+  border-width: 2px;
+}
+
+.player-loading-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.player-loading-caption {
+  color: rgba(235, 235, 245, .52);
+  font-size: 10px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+#player-loading-text {
+  display: block;
+  color: #f5f5f7;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.player-overlay.mini-pip-mode .player-spinner {
+  display: none;
+}
+
+@supports (width: clamp(1px, 2vw, 3px)) {
+  .player-overlay { --play-button-half: clamp(48px, 5.5vw, 78px); }
+}
+
+@media (max-height: 580px) {
+  .player-overlay { --transport-center: 42%; --play-button-half: 44px; }
+  .player-overlay.is-loading { --transport-center: 31%; }
+  .player-overlay .player-spinner {
+    top: calc(var(--transport-center) + var(--play-button-half) + 10px);
+    min-height: 42px;
+    padding: 9px 14px;
+    border-radius: 14px;
+    width: 310px;
+  }
+  .player-spinner .apple-spinner { width: 18px; height: 18px; margin-right: 12px; }
+  .player-loading-caption { display: none; }
+  #player-loading-text { font-size: 12px; }
+}

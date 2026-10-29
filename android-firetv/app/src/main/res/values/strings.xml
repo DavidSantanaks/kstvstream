@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">KS TV Player</string>
+    <string name="connecting">Conectando ao sinal</string>
+    <string name="live_badge">● AO VIVO</string>
+    <string name="remote_hint">VOLTAR: Limpar Tela  •  OK: Canais</string>
+    <string name="channels_title">Canais da categoria</string>
+    <string name="channels_hint">Selecione para trocar imediatamente</string>
+    <string name="playback_subtitle">Reproduzindo</string>
+    <string name="signal_unavailable">Sinal indisponível</string>
+    <string name="signal_error">Não foi possível conectar. Tente outro canal ou aperte Voltar.</string>
+    <string name="live_remote_hint">OK: Lista de Canais  •  VOLTAR: Limpar / Mini Player</string>
+    <string name="cinema_badge">KS TV Player • Cinema</string>
+    <string name="vod_remote_hint">Aperte VOLTAR para limpar a tela</string>
+    <string name="aspect_zoom">Tela: Zoom</string>
+    <string name="aspect_fill">Tela: Esticar</string>
+    <string name="aspect_default">Tela: Padrão</string>
+</resources>

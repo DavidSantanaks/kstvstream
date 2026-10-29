@@ -1,0 +1,27 @@
+/* Let native touch scrolling choose the shelf or the page by gesture direction. */
+html,
+body,
+#section-home {
+  touch-action: pan-x pan-y;
+}
+
+.home-row-track {
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  cursor: grab;
+}
+
+.home-row-track * {
+  touch-action: pan-x pan-y;
+}
+
+.home-row-track img {
+  -webkit-user-drag: none;
+}
+
+.home-row-track.is-dragging,
+.home-row-track.is-dragging * {
+  cursor: grabbing;
+}

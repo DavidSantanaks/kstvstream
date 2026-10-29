@@ -1,0 +1,41 @@
+KS TV Player - componentes de terceiros
+
+As licencas dos componentes abaixo se aplicam aos respectivos componentes,
+independentemente da ausencia de uma licenca aberta para o codigo proprio.
+O aplicativo nao inclui listas de canais ou obras audiovisuais licenciadas.
+
+HLS.js 1.5.17
+Copyright (c) 2017 Dailymotion.
+Inclui codigo derivado de videojs-contrib-hls, Copyright (c) 2013-2015 Brightcove.
+Licenca: Apache-2.0. Veja APACHE-2.0.txt e hls.js-LICENSE.txt.
+Fonte: https://github.com/video-dev/hls.js/tree/v1.5.17
+SHA-256 do bundle: 484054e8cd03d3f6d1781fb7f402bdc318d8a4c527f933a95c624e27cc9a9470
+
+AndroidX (AppCompat, Activity, Core, Media3 e dependencias AndroidX)
+Copyright The Android Open Source Project / Google LLC e contribuidores.
+Licenca: Apache-2.0, veja APACHE-2.0.txt.
+Fontes: https://android.googlesource.com/platform/frameworks/support/
+        https://github.com/androidx/media/tree/1.6.1
+
+OkHttp 4.12.0 e Okio
+Copyright Square, Inc. e contribuidores.
+Licenca: Apache-2.0, veja APACHE-2.0.txt.
+Fontes: https://github.com/square/okhttp/tree/parent-4.12.0
+        https://github.com/square/okio
+O NOTICE da Public Suffix List e os metadados de licenca fornecidos pelas
+bibliotecas sao preservados no APK. A lista mantem sua licenca MPL-2.0:
+https://publicsuffix.org/list/ e https://www.mozilla.org/MPL/2.0/
+
+Kotlin, kotlinx.coroutines, JetBrains annotations, Guava e Error Prone
+Copyright JetBrains s.r.o., Google LLC e respectivos contribuidores.
+Licenca: Apache-2.0, veja APACHE-2.0.txt.
+Fontes: https://github.com/JetBrains/kotlin
+        https://github.com/Kotlin/kotlinx.coroutines
+        https://github.com/JetBrains/java-annotations
+        https://github.com/google/guava
+        https://github.com/google/error-prone
+
+Os arquivos META-INF/LICENSE*, META-INF/NOTICE* e META-INF/DEPENDENCIES
+fornecidos pelas dependencias sao mesclados e preservados no APK.
+O Gradle Wrapper e uma ferramenta de build, com licenca em
+licenses/gradle-LICENSE.txt no repositorio de fontes.

@@ -1,40 +1,75 @@
 plugins { id 'com.android.application' }
 
+def releaseSecrets = ['KS_SIGNING_STORE_FILE', 'KS_SIGNING_STORE_PASSWORD', 'KS_SIGNING_KEY_ALIAS', 'KS_SIGNING_KEY_PASSWORD']
+def hasReleaseSigning = releaseSecrets.every { System.getenv(it) }
+def releaseVersionName = providers.gradleProperty('versionName').orElse('1.0.0').get()
+def releaseVersionCode = providers.gradleProperty('versionCode').orElse('1').get().toInteger()
+if (!(releaseVersionName ==~ /\d+\.\d+\.\d+/) || releaseVersionCode < 1 || releaseVersionCode > 2100000000) {
+    throw new GradleException('versionName ou versionCode Android inválido.')
+}
+
 android {
-    namespace 'com.appletv.iptv.firetv'
-    compileSdk 35
+    namespace = 'com.appletv.iptv.firetv'
+    compileSdk = 35
 
     defaultConfig {
-        applicationId 'com.appletv.iptv.firetv'
-        minSdk 24
-        targetSdk 35
-        versionCode 1
-        versionName '1.0.0'
+        applicationId = 'com.appletv.iptv.firetv'
+        minSdk = 24
+        targetSdk = 35
+        versionCode = releaseVersionCode
+        versionName = releaseVersionName
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile = file(System.getenv('KS_SIGNING_STORE_FILE'))
+                storePassword = System.getenv('KS_SIGNING_STORE_PASSWORD')
+                keyAlias = System.getenv('KS_SIGNING_KEY_ALIAS')
+                keyPassword = System.getenv('KS_SIGNING_KEY_PASSWORD')
+            }
+        }
     }
 
     buildTypes {
         debug {
-            debuggable true
+            debuggable = true
         }
         release {
-            minifyEnabled false
-            signingConfig signingConfigs.debug
+            minifyEnabled = false
+            signingConfig = hasReleaseSigning ? signingConfigs.release : null
         }
     }
 
     lint {
-        abortOnError false
-        checkReleaseBuilds false
+        abortOnError = true
+        checkReleaseBuilds = true
+        warningsAsErrors = true
+        // Dependency updates require compatibility review; availability alone must not make CI nondeterministic.
+        disable 'GradleDependency', 'AndroidGradlePluginVersion'
     }
 
     packaging {
-        resources.excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE*', 'META-INF/NOTICE*']
+        resources.merges += ['META-INF/LICENSE*', 'META-INF/NOTICE*', 'META-INF/DEPENDENCIES']
     }
+}
+
+def validateReleaseSigning = tasks.register('validateReleaseSigning') {
+    doLast {
+        if (!hasReleaseSigning) throw new GradleException('Release exige as quatro variáveis KS_SIGNING_*. Assinatura debug não é permitida.')
+    }
+}
+tasks.configureEach {
+    if (name == 'packageRelease' || name == 'bundleRelease') dependsOn(validateReleaseSigning)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['-Xlint:deprecation', '-Xlint:unchecked']
 }
 
 dependencies {

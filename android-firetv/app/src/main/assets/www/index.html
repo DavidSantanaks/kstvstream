@@ -3,107 +3,116 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>KS TV-Stream — Fire TV 4K</title>
+  <meta name="theme-color" content="#000000" />
+  <title>KS TV Player</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./carousels.css" />
+  <link rel="stylesheet" href="./home.css" />
+  <link rel="stylesheet" href="./player.css" />
   <script src="./vendor/hls.min.js"></script>
 </head>
 <body>
-  <!-- Dynamic Ambient Background (Apple TV+ style) -->
+  <!-- Dynamic Ambient Studio Lighting (Zero GPU Blur Lag) -->
   <div id="ambient-bg" class="ambient-bg">
     <div id="ambient-image" class="ambient-image"></div>
     <div class="ambient-vignette"></div>
   </div>
 
   <!-- ====================================================================
-       1. TELA DE LOGIN (3 Opções do PDF: Xtream, Acesso Rápido Core, M3U)
+       1. TELA DE LOGIN (Apple HIG Sheet + Segmented Control)
        ==================================================================== -->
   <section id="login-screen" class="screen login-screen active">
     <div class="login-container">
       <div class="login-brand">
-        <div class="apple-tv-logo">
-          <span class="tv-text">KS TV-Stream</span>
-          <span class="plus-badge">4K</span>
+        <div class="app-squircle-icon" aria-hidden="true">
+          <img class="app-logo" src="./assets/ks-tv-logo.png" alt="" />
         </div>
-        <p class="login-subtitle">Interface minimalista de alta performance para Fire TV Stick 4K</p>
+        <div class="apple-tv-logo">
+          <span class="tv-text">KS TV</span>
+          <span class="plus-badge">4K HDR</span>
+        </div>
+        <p class="login-subtitle">Sua TV, seus filmes e suas séries. Em um só lugar.</p>
       </div>
 
-      <!-- Seletor de Modo de Login (Igual aos apps de exemplo do PDF) -->
+      <!-- Apple Segmented Control -->
       <div class="login-tabs" role="tablist">
         <button type="button" class="login-tab active" data-focusable="true" data-login-mode="xtream">
           <span class="tab-title">Servidor + Usuário</span>
-          <span class="tab-sub">Lord Play • XCIPTV • IBO</span>
+          <span class="tab-sub">Xtream • XCIPTV • IBO</span>
         </button>
         <button type="button" class="login-tab" data-focusable="true" data-login-mode="core">
-          <span class="tab-title">Acesso Rápido Core</span>
-          <span class="tab-sub">Core Gold • Navegador • STB</span>
+          <span class="tab-title">Acesso Rápido</span>
+          <span class="tab-sub">DNS / IP • Direto</span>
         </button>
         <button type="button" class="login-tab" data-focusable="true" data-login-mode="m3u">
-          <span class="tab-title">Lista M3U / URL</span>
-          <span class="tab-sub">SSIPTV • Smart IPTV • 9Xtream</span>
+          <span class="tab-title">Lista M3U</span>
+          <span class="tab-sub">M3U Plus • SSIPTV • Smart</span>
         </button>
       </div>
 
       <form id="login-form" class="login-card" autocomplete="off">
-        <!-- MODO 1: XTREAM CODES (Servidor + Usuário + Senha) -->
+        <!-- MODO 1: XTREAM CODES -->
         <div id="login-panel-xtream" class="login-panel active">
           <div class="field-row two-cols">
             <div class="field-group">
-              <label for="xtream-name">Nome do Perfil</label>
-              <input id="xtream-name" type="text" data-focusable="true" value="KS TV-Stream" placeholder="Ex: Minha Lista" />
+              <label for="xtream-name">Perfil</label>
+              <input id="xtream-name" type="text" data-focusable="true" value="KS TV-Stream" placeholder="Ex: Sala Principal" />
             </div>
             <div class="field-group">
-              <label for="xtream-server">Servidor (URL)</label>
+              <label for="xtream-server">Servidor</label>
               <input id="xtream-server" type="text" data-focusable="true" value="" placeholder="http://seu-servidor.com" />
             </div>
           </div>
           <div class="field-row two-cols">
             <div class="field-group">
               <label for="xtream-user">Usuário</label>
-              <input id="xtream-user" type="text" data-focusable="true" value="" placeholder="Digite seu usuário" />
+              <input id="xtream-user" type="text" data-focusable="true" value="" placeholder="Nome de usuário" />
             </div>
             <div class="field-group">
               <label for="xtream-pass">Senha</label>
-              <input id="xtream-pass" type="password" data-focusable="true" value="" placeholder="Digite sua senha" />
+              <input id="xtream-pass" type="password" data-focusable="true" value="" placeholder="Sua senha" />
             </div>
           </div>
         </div>
 
-        <!-- MODO 2: ACESSO RÁPIDO (Servidor Salvo + Usuário + Senha) -->
+        <!-- MODO 2: ACESSO RÁPIDO -->
         <div id="login-panel-core" class="login-panel">
           <div class="field-group">
-            <label for="core-server">Servidor DNS / IP</label>
+            <label for="core-server">Servidor DNS ou IP</label>
             <input id="core-server" type="text" data-focusable="true" value="" placeholder="http://seu-servidor.com ou IP" />
           </div>
           <div class="field-row two-cols">
             <div class="field-group">
               <label for="core-user">Usuário</label>
-              <input id="core-user" type="text" data-focusable="true" value="" placeholder="Digite seu usuário" />
+              <input id="core-user" type="text" data-focusable="true" value="" placeholder="Nome de usuário" />
             </div>
             <div class="field-group">
               <label for="core-pass">Senha</label>
-              <input id="core-pass" type="password" data-focusable="true" value="" placeholder="Digite sua senha" />
+              <input id="core-pass" type="password" data-focusable="true" value="" placeholder="Sua senha" />
             </div>
           </div>
         </div>
 
-        <!-- MODO 3: LISTA M3U / URL (Igual IBO Player Pro, SSIPTV, Smart IPTV) -->
+        <!-- MODO 3: LISTA M3U / URL -->
         <div id="login-panel-m3u" class="login-panel">
           <div class="field-group">
             <label>Formato da Lista</label>
             <div class="preset-pills">
               <button type="button" class="preset-pill active" data-focusable="true" data-m3u-type="m3u_plus">
-                M3U Plus (Padrão)
+                M3U Plus
               </button>
               <button type="button" class="preset-pill" data-focusable="true" data-m3u-type="ssiptv">
-                Lista SSIPTV
+                SSIPTV
               </button>
               <button type="button" class="preset-pill" data-focusable="true" data-m3u-type="smart">
-                Lista Smart IPTV
+                Smart IPTV
               </button>
             </div>
           </div>
           <div class="field-group">
-            <label for="m3u-url">URL da Lista / M3U</label>
+            <label for="m3u-url">URL da Playlist</label>
             <input id="m3u-url" type="text" data-focusable="true" value="" placeholder="http://seu-servidor.com/playlist/usuario/senha/m3u_plus" />
           </div>
         </div>
@@ -112,34 +121,43 @@
 
         <div class="login-actions">
           <button id="btn-login-submit" type="submit" class="btn-primary-tv" data-focusable="true">
-            <span id="btn-login-text">Entrar agora</span>
+            <span id="btn-login-text">Continuar</span>
           </button>
         </div>
 
         <div class="login-footer-hint">
-          <span>Dica Fire TV: Use as setas do controle para navegar e o botão central <strong>OK</strong> para entrar.</span>
+          <span>Use as setas direcionais para navegar e pressione <kbd>OK</kbd> para confirmar</span>
         </div>
       </form>
     </div>
   </section>
 
   <!-- ====================================================================
-       2. APLICATIVO PRINCIPAL (INTERFACE MINIMALISTA APPLE TV / tvOS)
+       2. APLICATIVO PRINCIPAL (INTERFACE APPLE TV / tvOS LIQUID GLASS)
        ==================================================================== -->
   <section id="app-screen" class="screen app-screen">
-    <!-- Barra de Navegação Flutuante Estilo Apple TV (Glass Pill) -->
+    <!-- Barra de Navegação Superior Flutuante (tvOS Tab Pill) -->
     <header class="tvos-header">
       <div class="tvos-brand">
-        <span class="tv-text">KS TV-Stream</span>
+        <span class="brand-glyph" aria-hidden="true">
+          <img class="app-logo" src="./assets/icon-192.png" alt="" />
+        </span>
+        <span class="tv-text">KS TV</span>
       </div>
 
-      <nav class="tvos-nav-pill" role="navigation">
+      <nav class="tvos-nav-pill" role="navigation" aria-label="Navegação Principal">
         <button type="button" class="nav-item active" data-focusable="true" data-section="home">Início</button>
         <button type="button" class="nav-item" data-focusable="true" data-section="live">TV ao Vivo</button>
         <button type="button" class="nav-item" data-focusable="true" data-section="movies">Filmes</button>
         <button type="button" class="nav-item" data-focusable="true" data-section="series">Séries</button>
         <button type="button" class="nav-item" data-focusable="true" data-section="favorites">Favoritos</button>
-        <button type="button" class="nav-item" data-focusable="true" data-section="search">Busca</button>
+        <button type="button" class="nav-item nav-item-icon" data-focusable="true" data-section="search">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <circle cx="8.8" cy="8.8" r="5.5" stroke="currentColor" stroke-width="1.9" />
+            <path d="M13 13l3.8 3.8" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+          </svg>
+          <span>Busca</span>
+        </button>
         <button type="button" class="nav-item" data-focusable="true" data-section="account">Conta</button>
       </nav>
 
@@ -151,28 +169,47 @@
 
     <!-- Área de Conteúdo Principal -->
     <main id="main-content" class="tvos-main">
-      <!-- ABA 1: INÍCIO (Apple TV+ Showcase & Continue Watching) -->
+      <!-- ABA 1: INÍCIO (Apple TV+ Top Shelf Showcase & Up Next) -->
       <div id="section-home" class="content-section active">
+        <div class="home-welcome">
+          <div>
+            <p class="home-eyebrow">BOM TER VOCÊ POR AQUI</p>
+            <h1 class="home-welcome-title"><span id="home-greeting">Olá.</span> O que vamos assistir?</h1>
+            <p class="home-welcome-subtitle">Filmes, séries e seus canais. Escolha o que combina com agora.</p>
+          </div>
+          <span class="home-welcome-mark" aria-hidden="true">Seu momento de dar o play.</span>
+        </div>
         <div id="hero-banner" class="hero-banner">
           <div class="hero-backdrop-wrap">
             <img id="hero-backdrop-img" class="hero-backdrop-img" src="" alt="" />
             <div class="hero-gradient"></div>
           </div>
           <div class="hero-content">
+            <p class="hero-eyebrow">UMA IDEIA PARA AGORA</p>
             <div class="hero-badges">
-              <span id="hero-badge-type" class="badge-glass">KS TV-Stream • Destaque</span>
+              <span id="hero-badge-type" class="badge-glass">Destaque • KS TV</span>
               <span id="hero-badge-meta" class="badge-outline">4K UHD • HDR</span>
             </div>
-            <h1 id="hero-title" class="hero-title">Carregando catálogo...</h1>
-            <p id="hero-desc" class="hero-desc">Navegue pelos canais ao vivo, filmes em 4K e séries com a fluidez da Apple TV.</p>
+            <h2 id="hero-title" class="hero-title">Preparando seu próximo play…</h2>
+            <p id="hero-desc" class="hero-desc">Já já tem filme, série e TV ao vivo por aqui. Pode escolher seu lugar no sofá.</p>
             <div class="hero-buttons">
               <button id="btn-hero-play" type="button" class="btn-tv-white" data-focusable="true">
-                <span>▶ Assistir Agora</span>
+                <svg class="icon-svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path d="M5.6 3.9c0-.8.88-1.28 1.56-.86l9.6 5.96c.64.4.64 1.32 0 1.72l-9.6 5.96c-.68.42-1.56-.06-1.56-.86V3.9z" />
+                </svg>
+                <span>Assistir</span>
               </button>
               <button id="btn-hero-live" type="button" class="btn-tv-glass" data-focusable="true">
-                <span>Abrir TV ao Vivo</span>
+                <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <circle cx="10" cy="10" r="2.3" fill="currentColor" />
+                  <path d="M6.3 6.3a5.2 5.2 0 0 0 0 7.4M13.7 6.3a5.2 5.2 0 0 1 0 7.4M3.6 3.6a9 9 0 0 0 0 12.8M16.4 3.6a9 9 0 0 1 0 12.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                </svg>
+                <span>TV ao Vivo</span>
               </button>
             </div>
+          </div>
+          <div class="hero-artwork" aria-hidden="true">
+            <img id="hero-poster-img" class="hero-poster-img" src="" alt="" />
           </div>
         </div>
 
@@ -181,7 +218,7 @@
         </div>
       </div>
 
-      <!-- ABA 2: TV AO VIVO (Split-View Ultra Rápido: Categorias + Canais) -->
+      <!-- ABA 2: TV AO VIVO (Apple Sidebar + Live Channels) -->
       <div id="section-live" class="content-section">
         <div class="catalog-layout">
           <aside class="category-sidebar">
@@ -194,12 +231,12 @@
 
           <section class="catalog-main">
             <div class="catalog-toolbar">
-              <div>
+              <div class="toolbar-headings">
                 <h2 id="live-current-cat-title" class="catalog-title">Canais ao Vivo</h2>
-                <p id="live-current-cat-sub" class="catalog-sub">Selecione um canal para assistir • Aperte VOLTAR no vídeo para Mini Player</p>
+                <p id="live-current-cat-sub" class="catalog-sub">Selecione um canal para reproduzir • Voltar ativa o Mini Player</p>
               </div>
               <div class="toolbar-search">
-                <input id="live-filter-input" type="text" data-focusable="true" placeholder="Filtrar canal..." />
+                <input id="live-filter-input" class="apple-search-input" type="text" data-focusable="true" placeholder="Filtrar canais" />
               </div>
             </div>
 
@@ -207,35 +244,45 @@
             <div id="live-epg-bar" class="live-epg-bar">
               <div class="epg-info-col">
                 <div class="epg-channel-header">
-                  <span class="epg-tag">GUIA EPG</span>
-                  <strong id="epg-channel-title">Selecione ou passe por um canal para ver a programação</strong>
+                  <span class="epg-tag">GUIA AO VIVO</span>
+                  <strong id="epg-channel-title">Selecione um canal para visualizar a programação</strong>
                 </div>
                 <div class="epg-programs-row">
                   <div class="epg-prog-item">
-                    <span class="epg-prog-label">AGORA:</span>
+                    <span class="epg-prog-label">Agora</span>
                     <span id="epg-now-text" class="epg-prog-title">Programação ao vivo disponível</span>
                   </div>
                   <div class="epg-prog-item">
-                    <span class="epg-prog-label">A SEGUIR:</span>
+                    <span class="epg-prog-label">A seguir</span>
                     <span id="epg-next-text" class="epg-prog-title">--</span>
                   </div>
                 </div>
               </div>
               <div id="pip-controls-box" class="pip-controls-box hidden">
-                <button id="btn-pip-expand" type="button" class="btn-tv-white" data-focusable="true">⛶ Tela Cheia</button>
-                <button id="btn-pip-stop" type="button" class="btn-tv-danger" data-focusable="true">✕ Fechar Mini Player</button>
+                <button id="btn-pip-expand" type="button" class="btn-tv-white btn-sm" data-focusable="true">
+                  <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M3.5 7.5V3.5h4M16.5 7.5V3.5h-4M3.5 12.5v4h4M16.5 12.5v4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  <span>Tela Cheia</span>
+                </button>
+                <button id="btn-pip-stop" type="button" class="btn-tv-danger btn-sm" data-focusable="true">
+                  <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                    <path d="M5.5 5.5l9 9M14.5 5.5l-9 9" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                  </svg>
+                  <span>Fechar</span>
+                </button>
               </div>
             </div>
 
             <div id="live-channels-grid" class="live-channels-grid"></div>
             <div id="live-load-more-wrap" class="load-more-wrap hidden">
-              <button id="btn-live-load-more" type="button" class="btn-tv-glass" data-focusable="true">Carregar mais canais</button>
+              <button id="btn-live-load-more" type="button" class="btn-tv-glass" data-focusable="true">Mostrar mais canais</button>
             </div>
           </section>
         </div>
       </div>
 
-      <!-- ABA 3: FILMES (Categorias + Pôsteres 2:3 estilo Apple TV) -->
+      <!-- ABA 3: FILMES -->
       <div id="section-movies" class="content-section">
         <div class="catalog-layout">
           <aside class="category-sidebar">
@@ -248,12 +295,12 @@
 
           <section class="catalog-main">
             <div class="catalog-toolbar">
-              <div>
+              <div class="toolbar-headings">
                 <h2 id="movies-current-cat-title" class="catalog-title">Filmes</h2>
                 <p id="movies-current-cat-sub" class="catalog-sub">Catálogo sob demanda</p>
               </div>
               <div class="toolbar-search">
-                <input id="movies-filter-input" type="text" data-focusable="true" placeholder="Filtrar filmes..." />
+                <input id="movies-filter-input" class="apple-search-input" type="text" data-focusable="true" placeholder="Filtrar filmes" />
               </div>
             </div>
             <div id="movies-grid" class="poster-grid"></div>
@@ -264,12 +311,12 @@
         </div>
       </div>
 
-      <!-- ABA 4: SÉRIES (Categorias + Pôsteres 2:3 estilo Apple TV) -->
+      <!-- ABA 4: SÉRIES -->
       <div id="section-series" class="content-section">
         <div class="catalog-layout">
           <aside class="category-sidebar">
             <div class="sidebar-header">
-              <h2>Plataformas</h2>
+              <h2>Coleções</h2>
               <span id="series-cat-count" class="count-pill">0</span>
             </div>
             <div id="series-categories-list" class="category-list"></div>
@@ -277,12 +324,12 @@
 
           <section class="catalog-main">
             <div class="catalog-toolbar">
-              <div>
+              <div class="toolbar-headings">
                 <h2 id="series-current-cat-title" class="catalog-title">Séries</h2>
                 <p id="series-current-cat-sub" class="catalog-sub">Temporadas completas</p>
               </div>
               <div class="toolbar-search">
-                <input id="series-filter-input" type="text" data-focusable="true" placeholder="Filtrar séries..." />
+                <input id="series-filter-input" class="apple-search-input" type="text" data-focusable="true" placeholder="Filtrar séries" />
               </div>
             </div>
             <div id="series-grid" class="poster-grid"></div>
@@ -297,37 +344,48 @@
       <div id="section-favorites" class="content-section">
         <div class="single-page-wrap">
           <div class="catalog-toolbar">
-            <div>
-              <h2 class="catalog-title">Meus Favoritos</h2>
-              <p class="catalog-sub">Seus canais, filmes e séries salvos para acesso rápido</p>
+            <div class="toolbar-headings">
+              <h2 class="catalog-title">Favoritos</h2>
+              <p class="catalog-sub">Seus canais, filmes e séries salvos na Minha Lista</p>
             </div>
           </div>
           <div id="favorites-grid" class="poster-grid"></div>
         </div>
       </div>
 
-      <!-- ABA 6: BUSCA GLOBAL -->
+      <!-- ABA 6: BUSCA GLOBAL (Spotlight / tvOS Search) -->
       <div id="section-search" class="content-section">
         <div class="single-page-wrap">
-          <div class="search-hero-box">
-            <input id="global-search-input" type="text" data-focusable="true" placeholder="Digite o nome do canal, filme ou série..." />
-            <button id="btn-global-search" type="button" class="btn-tv-white" data-focusable="true">Buscar</button>
+          <div class="search-header-block">
+            <h2 class="catalog-title">Busca</h2>
+            <p id="search-status" class="catalog-sub">
+              Encontre canais ao vivo, filmes e séries nas categorias carregadas.
+            </p>
           </div>
-          <div id="search-status" class="catalog-sub" style="margin-bottom: 18px;">
-            Busque instantaneamente nas categorias carregadas ou pesquise em todo o servidor.
+          <div class="search-hero-box">
+            <input id="global-search-input" class="apple-search-input apple-search-lg" type="text" data-focusable="true" placeholder="Canais, filmes, séries..." />
+            <button id="btn-global-search" type="button" class="btn-tv-white" data-focusable="true">Buscar</button>
           </div>
           <div id="search-results-grid" class="poster-grid"></div>
         </div>
       </div>
 
-      <!-- ABA 7: CONTA & OPÇÕES -->
+      <!-- ABA 7: CONTA & AJUSTES (Apple Settings Style) -->
       <div id="section-account" class="content-section">
         <div class="single-page-wrap account-wrap">
           <div class="account-card">
             <div class="account-card-header">
-              <div>
-                <span class="badge-glass">Sessão Conectada</span>
-                <h2 id="acc-profile-name" style="margin-top: 8px;">Core Play 4K</h2>
+              <div class="account-profile-row">
+                <div class="account-avatar" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="8.5" r="3.8" stroke="currentColor" stroke-width="1.8" />
+                    <path d="M5.2 19.5c1.5-3.2 4-4.8 6.8-4.8s5.3 1.6 6.8 4.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+                  </svg>
+                </div>
+                <div>
+                  <span class="account-eyebrow">Sessão Conectada</span>
+                  <h2 id="acc-profile-name" class="account-name">KS TV-Stream</h2>
+                </div>
               </div>
               <span id="acc-status-badge" class="status-pill">Ativo</span>
             </div>
@@ -342,21 +400,27 @@
                 <strong id="acc-username">--</strong>
               </div>
               <div class="stat-box">
-                <span class="stat-label">Expira em</span>
+                <span class="stat-label">Validade</span>
                 <strong id="acc-exp-date">--</strong>
               </div>
               <div class="stat-box">
-                <span class="stat-label">Conexões</span>
+                <span class="stat-label">Conexões Ativas</span>
                 <strong id="acc-connections">0 / 1</strong>
               </div>
             </div>
 
             <div class="account-actions">
               <button id="btn-refresh-cache" type="button" class="btn-tv-glass" data-focusable="true">
-                Atualizar Catálogo (Limpar Cache)
+                <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M16.2 10a6.2 6.2 0 1 1-1.6-4.15M16.2 3.8v2.8h-2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>Atualizar Catálogo</span>
               </button>
-              <button id="btn-switch-login" type="button" class="btn-tv-danger" data-focusable="true">
-                Trocar Lista / Opções de Login
+              <button id="btn-switch-login" type="button" class="btn-tv-danger" data-focusable="true" title="Desconectar e limpar todo o histórico e dados">
+                <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                  <path d="M13 3h3a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3M8 14l4-4-4-4M12 10H3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <span>Trocar Fonte / Limpar Dados</span>
               </button>
             </div>
           </div>
@@ -366,7 +430,7 @@
   </section>
 
   <!-- ====================================================================
-       3. MODAL DE DETALHES (FILME OU SÉRIE / TEMPORADAS & EPISÓDIOS)
+       3. MODAL DE DETALHES (Apple TV+ Product Page)
        ==================================================================== -->
   <div id="details-modal" class="details-modal hidden">
     <div class="details-backdrop-wrap">
@@ -374,11 +438,23 @@
       <div class="details-vignette"></div>
     </div>
 
+    <!-- Barra Superior Fixa com Botão Voltar (Apple TV+ Navigation Bar) -->
+    <header class="details-top-bar">
+      <button id="btn-details-back" type="button" class="details-nav-back-btn" data-focusable="true" title="Voltar (Esc)">
+        <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M12.5 4.5L7 10l5.5 5.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span>Voltar</span>
+      </button>
+      <div id="details-top-bar-title" class="details-top-bar-title">Série</div>
+    </header>
+
     <div class="details-container">
       <div class="details-top">
         <img id="details-poster" class="details-poster" src="" alt="" />
         <div class="details-info">
           <div class="hero-badges">
+            <span id="details-badge-4k" class="badge-4k hidden">4K UHD</span>
             <span id="details-badge-type" class="badge-glass">Filme</span>
             <span id="details-badge-year" class="badge-outline">2026</span>
             <span id="details-badge-rating" class="badge-outline">★ 8.0</span>
@@ -389,19 +465,25 @@
 
           <div class="details-actions">
             <button id="btn-details-play" type="button" class="btn-tv-white" data-focusable="true">
-              ▶ Assistir Agora
+              <svg class="icon-svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M5.6 3.9c0-.8.88-1.28 1.56-.86l9.6 5.96c.64.4.64 1.32 0 1.72l-9.6 5.96c-.68.42-1.56-.06-1.56-.86V3.9z" />
+              </svg>
+              <span>Assistir</span>
             </button>
             <button id="btn-details-fav" type="button" class="btn-tv-glass" data-focusable="true">
-              ★ Favoritar
+              <svg class="icon-svg icon-star" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 2.8l2.22 4.5 4.97.72-3.6 3.5.85 4.95L10 14.14l-4.44 2.33.85-4.95-3.6-3.5 4.97-.72L10 2.8z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" />
+              </svg>
+              <span id="details-fav-label">Favoritar</span>
             </button>
             <button id="btn-details-close" type="button" class="btn-tv-glass" data-focusable="true">
-              Voltar
+              <span>Voltar</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Seção de Temporadas e Episódios (Visível apenas para Séries) -->
+      <!-- Seção de Temporadas e Episódios (Séries) -->
       <div id="series-episodes-section" class="series-episodes-section hidden">
         <div id="season-selector" class="season-selector"></div>
         <div id="episodes-list" class="episodes-list"></div>
@@ -410,131 +492,199 @@
   </div>
 
   <!-- ====================================================================
-       4. PLAYER DE VÍDEO "CLEAR" (TV AO VIVO, FILMES E SÉRIES)
-       - Ao apertar VOLTAR quando o OSD (opções) está visível: SOME o OSD da tela!
-       - Ao apertar VOLTAR quando a tela já está limpa: Sai do player.
+       4. PLAYER DE VÍDEO "CLEAR" (Apple TV+ Native Player Aesthetic)
        ==================================================================== -->
   <div id="player-overlay" class="player-overlay hidden">
-    <!-- Elemento de vídeo HTML5 / HLS.js (no APK nativo, o ExoPlayer roda na camada de hardware e este fica transparente) -->
     <video id="video-element" class="video-element" playsinline></video>
+    <input id="subtitle-file-input" type="file" accept=".srt,.vtt" class="hidden" />
 
-    <!-- Indicador sutil de carregamento (some assim que o 1º frame toca) -->
-    <div id="player-Spinner" class="player-spinner hidden">
-      <div class="apple-spinner"></div>
-      <span id="player-loading-text">Conectando ao sinal...</span>
+    <!-- Controles Diretos do Mini Player (Visível no modo PiP via Browser) -->
+    <div id="mini-pip-bar" class="mini-pip-bar">
+      <span id="mini-pip-title" class="mini-pip-title">Mini Player</span>
+      <div class="mini-pip-actions">
+        <button id="btn-mini-pip-expand" type="button" class="mini-pip-btn" title="Expandir para Tela Cheia" aria-label="Expandir para Tela Cheia">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M3.5 7.5V3.5h4M16.5 7.5V3.5h-4M3.5 12.5v4h4M16.5 12.5v4h-4" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <button id="btn-mini-pip-close" type="button" class="mini-pip-btn mini-pip-btn-close" title="Fechar Mini Player" aria-label="Fechar Mini Player">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M5.5 5.5l9 9M14.5 5.5l-9 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
     </div>
 
-    <!-- Mensagem de erro caso um canal específico esteja offline -->
+    <!-- Compact connection status, placed below the transport controls. -->
+    <div id="player-Spinner" class="player-spinner hidden" role="status" aria-live="polite" aria-atomic="true">
+      <div class="apple-spinner" aria-hidden="true"></div>
+      <div class="player-loading-copy">
+        <span id="player-loading-caption" class="player-loading-caption">Conectando ao sinal</span>
+        <span id="player-loading-text">Mexendo na antena…</span>
+      </div>
+    </div>
+
+    <!-- Erro de sinal -->
     <div id="player-error-box" class="player-error-box hidden">
-      <h3 id="player-error-title">Sinal indisponível no momento</h3>
-      <p id="player-error-desc">Tentando reconectar ou selecione outro canal.</p>
+      <h3 id="player-error-title">Sinal indisponível</h3>
+      <p id="player-error-desc">Não foi possível reproduzir este canal agora. Tente reconectar ou escolha outra opção.</p>
       <div class="player-error-actions">
         <button id="btn-player-retry" type="button" class="btn-tv-white" data-focusable="true">Tentar Novamente</button>
-        <button id="btn-player-exit-err" type="button" class="btn-tv-glass" data-focusable="true">Sair do Vídeo</button>
+        <button id="btn-player-exit-err" type="button" class="btn-tv-glass" data-focusable="true">Fechar</button>
       </div>
     </div>
 
-    <!-- OSD (OPÇÕES DO PLAYER) ESTILO APPLE TV
-         Fica oculto (clear) durante a reprodução e some imediatamente ao apertar VOLTAR! -->
+    <!-- OSD ESTILO tvOS -->
     <div id="player-osd" class="player-osd">
-      <!-- Topo minimalista -->
       <div class="osd-top-bar">
         <div class="osd-top-left">
-          <span id="osd-live-badge" class="osd-live-badge">● AO VIVO</span>
-          <span id="osd-category-pill" class="osd-meta-pill">TV ao Vivo</span>
+          <button id="btn-osd-top-exit" type="button" class="osd-btn osd-icon-button" data-focusable="true" title="Encerrar reprodução" aria-label="Encerrar reprodução">
+            <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          </button>
+          <button id="btn-osd-back" type="button" class="osd-btn osd-back-btn" data-focusable="true" title="Voltar ao catálogo">
+            <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="11" rx="2" stroke="currentColor" stroke-width="1.5" /><rect x="10" y="9" width="8" height="6" rx="1.5" fill="currentColor" stroke="#262628" /></svg>
+            <span id="osd-back-label">Voltar</span>
+          </button>
         </div>
         <div class="osd-top-right">
-          <span class="osd-back-hint">Aperte <strong>VOLTAR</strong> para limpar a tela (2x para Mini Player na TV)</span>
+          <span id="osd-live-badge" class="osd-live-badge"><span class="live-pulse-dot"></span>AO VIVO</span>
+          <span id="osd-category-pill" class="osd-meta-pill">TV ao Vivo</span>
+          <span id="osd-res-badge" class="osd-res-badge hidden">4K</span>
         </div>
       </div>
 
-      <!-- Lista Rápida de Canais + EPG no Player (Abre ao apertar OK na TV ao Vivo) -->
+      <div class="osd-transport-controls" role="group" aria-label="Controles de reprodução">
+        <button id="btn-osd-prev-ch" type="button" aria-label="Canal anterior" class="osd-transport-btn osd-btn" data-focusable="true" title="Canal Anterior">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M4.2 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zm3.1 5.5c0-.46.25-.88.65-1.1l6.6-3.8c.8-.46 1.8.12 1.8 1.04v7.72c0 .92-1 1.5-1.8 1.04l-6.6-3.8A1.26 1.26 0 0 1 7.3 10z" />
+          </svg>
+          <span class="sr-only">Anterior</span>
+        </button>
+        <button id="btn-osd-rw" type="button" aria-label="Voltar 15 segundos" class="osd-transport-btn osd-btn hidden" data-focusable="true" title="Voltar 15s">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4.5 9.8A5.8 5.8 0 1 0 6.4 5.5L4.4 7.2M4.4 4v3.2h3.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+          </svg><span class="osd-skip-amount" aria-hidden="true">15</span>
+          <span class="sr-only">-15s</span>
+        </button>
+        <button id="btn-osd-playpause" type="button" aria-label="Reproduzir ou pausar" class="osd-transport-btn osd-btn osd-btn-primary" data-focusable="true">
+          <svg id="osd-playpause-icon" class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <rect x="5.2" y="4.2" width="3.4" height="11.6" rx="1.1" />
+            <rect x="11.4" y="4.2" width="3.4" height="11.6" rx="1.1" />
+          </svg>
+          <span id="osd-playpause-label" class="sr-only">Pausar</span>
+        </button>
+        <button id="btn-osd-ff" type="button" aria-label="Avançar 15 segundos" class="osd-transport-btn osd-btn hidden" data-focusable="true" title="Avançar 15s">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M15.5 9.8a5.8 5.8 0 1 1-1.9-4.3l2 1.7M15.6 4v3.2h-3.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+          </svg><span class="osd-skip-amount" aria-hidden="true">15</span>
+          <span class="sr-only">+15s</span>
+        </button>
+        <button id="btn-osd-next-ch" type="button" aria-label="Próximo canal" class="osd-transport-btn osd-btn" data-focusable="true" title="Próximo Canal">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M14 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zM12.7 10c0 .46-.25.88-.65 1.1l-6.6 3.8c-.8.46-1.8-.12-1.8-1.04V6.14c0-.92 1-1.5 1.8-1.04l6.6 3.8c.4.22.65.64.65 1.1z" />
+          </svg>
+          <span class="sr-only">Próximo</span>
+        </button>
+      </div>
+
       <div id="osd-channel-drawer" class="osd-channel-drawer hidden">
         <div class="osd-drawer-header">
-          <strong>Canais da Categoria</strong>
-          <span id="osd-drawer-epg" class="osd-drawer-epg">EPG: Programação ao Vivo</span>
+          <strong>Canais</strong>
+          <span id="osd-drawer-epg" class="osd-drawer-epg">Guia de programação ao vivo</span>
         </div>
         <div id="osd-drawer-list" class="osd-drawer-list"></div>
       </div>
 
-      <!-- Painel inferior flutuante em vidro fosco (Apple TV Glass Sheet) -->
-      <div class="osd-bottom-sheet">
-        <div class="osd-media-header">
-          <img id="osd-logo" class="osd-logo hidden" src="" alt="" />
-          <div class="osd-titles">
-            <h2 id="osd-title">Nome do Canal / Filme</h2>
-            <p id="osd-subtitle">Reprodução em Alta Definição</p>
+
+      <div class="osd-bottom-wrap">
+        <div id="osd-tracks-popover" class="osd-tracks-popover hidden" role="dialog" aria-modal="true" aria-labelledby="osd-popover-title">
+          <div class="osd-popover-header">
+            <strong id="osd-popover-title">Opções de reprodução</strong>
+            <button id="btn-osd-popover-close" type="button" class="osd-popover-close" data-focusable="true" aria-label="Fechar menu">
+              <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5.8 5.8l8.4 8.4M14.2 5.8l-8.4 8.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+            </button>
+          </div>
+          <div id="osd-options-list" class="osd-options-list hidden">
+            <button id="btn-osd-quality" type="button" class="osd-popover-item osd-option-row osd-btn hidden" data-focusable="true" title="Resolução de Vídeo">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="2.5" y="4.2" width="15" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.65" />
+                <path d="M6.4 12V8l-1.9 2.7h2.6M11 8v4M11 10.2l2.4-2.2M11.8 9.5l1.9 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Qualidade</span><small id="osd-quality-label">Automática</small></span>
+            </button>
+            <button id="btn-osd-audio" type="button" class="osd-popover-item osd-option-row osd-btn hidden" data-focusable="true" title="Faixas de Áudio">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4.2 8.2h2.4l3.5-3v9.6l-3.5-3H4.2a1 1 0 0 1-1-1V9.2a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" />
+                <path d="M13.2 7.5a3.5 3.5 0 0 1 0 5M15.4 5.3a6.5 6.5 0 0 1 0 9.4" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Áudio</span><small id="osd-audio-label">Faixa de áudio</small></span>
+            </button>
+            <button id="btn-osd-subs" type="button" class="osd-popover-item osd-option-row osd-btn hidden" data-focusable="true" title="Legendas">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="2.5" y="4" width="15" height="11.5" rx="2.6" stroke="currentColor" stroke-width="1.65" />
+                <path d="M6 9h3.5M11.2 9H14M6 12h2.2M9.8 12H14" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Legendas</span><small id="osd-subs-label">Desativadas</small></span>
+            </button>
+            <button id="btn-osd-aspect" type="button" class="osd-popover-item osd-option-row osd-btn" data-focusable="true">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="2.8" y="4.2" width="14.4" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.7" />
+                <path d="M6.2 7.4h2.5M6.2 7.4v2.5M13.8 12.6h-2.5M13.8 12.6v-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Formato da imagem</span><small id="osd-aspect-label">Padrão</small></span>
+            </button>
+            <button id="btn-osd-hide" type="button" class="osd-popover-item osd-option-row osd-btn" data-focusable="true">
+              <span>Tela Limpa</span>
+            </button>
+            <button id="btn-osd-close" type="button" class="osd-popover-item osd-option-row osd-btn osd-btn-close" data-focusable="true">
+              <span>Encerrar</span>
+            </button>
+          </div>
+          <div id="osd-popover-list" class="osd-popover-list"></div>
+        </div>
+
+        <div class="osd-bottom-sheet">
+          <div class="osd-media-header">
+            <img id="osd-logo" class="osd-logo hidden" src="" alt="" />
+            <div class="osd-titles">
+              <h2 id="osd-title">Reproduzindo</h2>
+              <p id="osd-subtitle">Alta Definição</p>
+            </div>
+            <button id="btn-osd-more" type="button" class="osd-btn osd-icon-button" data-focusable="true" title="Opções de reprodução" aria-label="Opções de reprodução" aria-haspopup="dialog" aria-expanded="false">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg>
+            </button>
           </div>
           <div id="osd-time-display" class="osd-time-display hidden">
             <span id="osd-time-current">00:00</span>
-            <span class="osd-time-sep">/</span>
-            <span id="osd-time-total">00:00</span>
+            <div id="osd-progress-wrap" class="osd-progress-wrap hidden" data-focusable="true" tabindex="0" role="slider" aria-label="Posição da reprodução" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+              <div class="osd-progress-track"><div id="osd-progress-fill" class="osd-progress-fill"></div></div>
+            </div>
+            <span id="osd-time-total">--:--</span>
           </div>
-        </div>
-
-        <!-- Barra de Progresso (apenas para Filmes e Séries) -->
-        <div id="osd-progress-wrap" class="osd-progress-wrap hidden" data-focusable="true" tabindex="0">
-          <div class="osd-progress-track">
-            <div id="osd-progress-fill" class="osd-progress-fill"></div>
+          <div class="osd-controls-row">
+            <button id="btn-osd-channels" type="button" class="osd-btn hidden" data-focusable="true" aria-expanded="false" aria-controls="osd-channel-drawer">
+              <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg><span>Canais</span>
+            </button>
+            <button id="btn-osd-fav" type="button" class="osd-btn" data-focusable="true">
+              <svg class="icon-svg icon-sm icon-star" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M10 2.8l2.22 4.5 4.97.72-3.6 3.5.85 4.95L10 14.14l-4.44 2.33.85-4.95-3.6-3.5 4.97-.72L10 2.8z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" />
+              </svg>
+              <span id="osd-fav-label">Favoritar</span>
+            </button>
+            <button id="btn-osd-next-ep" type="button" class="osd-btn hidden" data-focusable="true">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M14 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zM12.7 10c0 .46-.25.88-.65 1.1l-6.6 3.8c-.8.46-1.8-.12-1.8-1.04V6.14c0-.92 1-1.5 1.8-1.04l6.6 3.8c.4.22.65.64.65 1.1z" />
+              </svg>
+              <span>Próx. Episódio</span>
+            </button>
+            <span class="osd-clean-hint">Os controles desaparecem durante a reprodução</span>
           </div>
-        </div>
-
-        <!-- Botões de Opções do Player (Ícones Monocromáticos Limpos) -->
-        <div class="osd-controls-row">
-          <!-- Botões para TV ao Vivo -->
-          <button id="btn-osd-prev-ch" type="button" class="osd-btn" data-focusable="true" title="Canal Anterior">
-            <span>|◀ Canal Ant.</span>
-          </button>
-
-          <!-- Botões para VOD (-10s) -->
-          <button id="btn-osd-rw" type="button" class="osd-btn hidden" data-focusable="true" title="Voltar 15s">
-            <span>↺ -15s</span>
-          </button>
-
-          <!-- Play / Pause Principal (Sem emoji laranja) -->
-          <button id="btn-osd-playpause" type="button" class="osd-btn osd-btn-primary" data-focusable="true">
-            <span id="osd-playpause-label">❚❚ Pausar</span>
-          </button>
-
-          <!-- Botões para VOD (+10s) -->
-          <button id="btn-osd-ff" type="button" class="osd-btn hidden" data-focusable="true" title="Avançar 15s">
-            <span>↻ +15s</span>
-          </button>
-
-          <!-- Botões para TV ao Vivo (Próximo Canal) -->
-          <button id="btn-osd-next-ch" type="button" class="osd-btn" data-focusable="true" title="Próximo Canal">
-            <span>▶| Próx. Canal</span>
-          </button>
-
-          <!-- Botão Próximo Episódio (Séries) -->
-          <button id="btn-osd-next-ep" type="button" class="osd-btn hidden" data-focusable="true">
-            <span>▶| Próx. Episódio</span>
-          </button>
-
-          <!-- Favoritar -->
-          <button id="btn-osd-fav" type="button" class="osd-btn" data-focusable="true">
-            <span id="osd-fav-label">☆ Favoritar</span>
-          </button>
-
-          <!-- Ajuste de Tela (Fit / Fill) -->
-          <button id="btn-osd-aspect" type="button" class="osd-btn" data-focusable="true">
-            <span id="osd-aspect-label">⛶ Tela: Padrão</span>
-          </button>
-
-          <!-- Ocultar Opções (Deixar tela Clear) -->
-          <button id="btn-osd-hide" type="button" class="osd-btn" data-focusable="true">
-            <span>✕ Ocultar Opções</span>
-          </button>
-
-          <!-- Sair do Vídeo -->
-          <button id="btn-osd-close" type="button" class="osd-btn osd-btn-close" data-focusable="true">
-            <span>Sair do Player</span>
-          </button>
         </div>
       </div>
     </div>
   </div>
 
   <script src="./app.js"></script>
+  <script src="./carousels.js"></script>
 </body>
 </html>

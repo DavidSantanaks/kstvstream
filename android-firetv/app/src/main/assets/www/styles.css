@@ -1,27 +1,54 @@
 /* ==========================================================================
-   KS TV-Stream — Apple TV (tvOS) Minimalist Design System
-   Optimized for 60 FPS on Fire TV Stick 4K (Chromium 78+) & Web
+   KS TV-Stream — Apple Human Interface Guidelines (tvOS & Liquid Glass)
+   Engineered for locked 60 FPS on Fire TV Stick 4K (Chromium 78+) & Web
+   - Compositor-only motion (transform & opacity)
+   - Optical Liquid Glass materials (zero expensive real-time blur shaders)
+   - Layout & style containment on high-density media grids
    ========================================================================== */
 
 :root {
-  --bg-deep: #07080d;
-  --bg-card: #131620;
-  --bg-card-hover: #1c202e;
-  --bg-surface: rgba(20, 23, 33, 0.94);
-  --bg-pill: rgba(26, 30, 42, 0.95);
-  --border-subtle: rgba(255, 255, 255, 0.12);
-  --border-focus: #ffffff;
+  /* Apple Dark Mode Base Canvas & Elevated System Grays */
+  --bg-deep: #000000;
+  --bg-canvas: #08080a;
+  --bg-card: #151518;
+  --bg-card-elevated: #1e1e22;
+  --bg-input: rgba(118, 118, 128, 0.20);
+  --bg-input-focus: #1d1d21;
+
+  /* Optical Liquid Glass Materials (Zero GPU Blur Lag) */
+  --material-regular: linear-gradient(180deg, rgba(42, 42, 46, 0.90) 0%, rgba(24, 24, 27, 0.95) 100%);
+  --material-thick: linear-gradient(180deg, rgba(36, 36, 40, 0.95) 0%, rgba(19, 19, 22, 0.98) 100%);
+  --material-pill: linear-gradient(180deg, rgba(48, 48, 53, 0.92) 0%, rgba(28, 28, 32, 0.96) 100%);
+  --material-sidebar: linear-gradient(180deg, rgba(28, 28, 32, 0.88) 0%, rgba(18, 18, 21, 0.94) 100%);
+
+  /* Hairlines & Specular Highlights */
+  --border-hairline: rgba(255, 255, 255, 0.09);
+  --border-subtle: rgba(255, 255, 255, 0.13);
+  --border-strong: rgba(255, 255, 255, 0.24);
+  --specular-inset: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+  /* Apple Semantic Typography Colors (Dark Appearance) */
   --text-primary: #f5f5f7;
-  --text-secondary: #a1a6b8;
-  --text-muted: #6e7385;
+  --text-secondary: rgba(235, 235, 245, 0.62);
+  --text-muted: rgba(235, 235, 245, 0.40);
+
+  /* Apple System Accents (Dark Appearance) */
   --accent-white: #ffffff;
   --accent-blue: #0a84ff;
-  --accent-live: #ff3b30;
+  --accent-live: #ff453a;
   --accent-green: #30d158;
-  --radius-sm: 10px;
+  --accent-gold: #ffd60a;
+
+  /* Continuous-Feel Corner Radii */
+  --radius-xs: 8px;
+  --radius-sm: 12px;
   --radius-md: 16px;
-  --radius-lg: 22px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
   --radius-pill: 999px;
+
+  /* Apple Fluid Spring Curve (Compositor Thread) */
+  --ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -31,16 +58,40 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
-html, body {
+html,
+body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
   background-color: var(--bg-deep);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  margin: 0 2px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
 }
 
 .hidden,
@@ -49,8 +100,30 @@ img:not([src]) {
   display: none !important;
 }
 
+/* Inline SF-Symbol-Style Vector Icons */
+.icon-svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.icon-svg.icon-sm {
+  width: 15px;
+  height: 15px;
+}
+
+button > .icon-svg + span {
+  margin-left: 7px;
+}
+
+button.is-fav .icon-star path {
+  fill: currentColor;
+}
+
 /* ==========================================================================
-   Lightweight Ambient Background (Zero GPU Blur Lag)
+   Atmospheric Studio Lighting (Static Composited Layer — 0.0ms Paint Cost)
    ========================================================================== */
 .ambient-bg {
   position: fixed;
@@ -60,7 +133,10 @@ img:not([src]) {
   left: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 18% 12%, #141d33 0%, #07080d 65%);
+  background:
+    radial-gradient(ellipse 80% 55% at 50% -10%, rgba(255, 255, 255, 0.065) 0%, rgba(255, 255, 255, 0) 65%),
+    radial-gradient(circle at 16% 18%, rgba(10, 132, 255, 0.055) 0%, rgba(0, 0, 0, 0) 52%),
+    linear-gradient(180deg, #0b0b0e 0%, #040406 60%, #000000 100%);
 }
 
 .ambient-image,
@@ -69,26 +145,145 @@ img:not([src]) {
 }
 
 /* ==========================================================================
-   Ultra-Fast Apple TV Focus State (Zero Box-Shadow Blur for 60 FPS on Fire TV)
+   Apple tvOS Focus Engine (60 FPS GPU Scale + Luminous Contrast)
    ========================================================================== */
 [data-focusable="true"] {
   outline: none;
+  transition: transform 165ms var(--ease-apple);
 }
 
-[data-focusable="true"].tv-focused,
-[data-focusable="true"]:focus {
+/* Interactive Controls: Invert to Pure Luminous Apple White on Focus (Excluding Media Cards) */
+button[data-focusable="true"].tv-focused:not(.poster-card):not(.channel-card):not(.episode-card):not(.nav-item):not(.cat-btn):not(.login-tab):not(.preset-pill):not(.osd-drawer-item):not(.osd-popover-item):not(.season-pill):not(.btn-tv-glass):not(.btn-tv-danger):not(.osd-btn-close):not(.osd-btn):not(.details-nav-back-btn),
+button[data-focusable="true"]:focus-visible:not(.poster-card):not(.channel-card):not(.episode-card):not(.nav-item):not(.cat-btn):not(.login-tab):not(.preset-pill):not(.osd-drawer-item):not(.osd-popover-item):not(.season-pill):not(.btn-tv-glass):not(.btn-tv-danger):not(.osd-btn-close):not(.osd-btn):not(.details-nav-back-btn) {
+  background: #ffffff !important;
+  color: #000000 !important;
   border-color: #ffffff !important;
-  box-shadow: 0 0 0 2px #ffffff !important;
-  background-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55) !important;
+  transform: scale3d(1.03, 1.03, 1);
+  z-index: 12;
+}
+
+/* Login Segmented Tabs: Preserve Subtext Readability When Inverted */
+.login-tab.tv-focused .tab-title,
+.login-tab:focus-visible .tab-title {
+  color: #000000 !important;
+}
+
+.login-tab.tv-focused .tab-sub,
+.login-tab:focus-visible .tab-sub {
+  color: rgba(0, 0, 0, 0.58) !important;
+}
+
+/* Destructive Controls: Turn Vibrant Apple Red on Focus */
+.btn-tv-danger.tv-focused,
+.btn-tv-danger:focus-visible,
+.osd-btn-close.tv-focused,
+.osd-btn-close:focus-visible {
+  background: var(--accent-live) !important;
+  color: #ffffff !important;
+  border-color: var(--accent-live) !important;
+}
+
+/* Media Tiles (Posters, Channels, Episodes): Apple tvOS Frame & Elevate (Never Turn Solid White!) */
+button.poster-card[data-focusable="true"].tv-focused,
+button.poster-card[data-focusable="true"]:focus,
+button.poster-card[data-focusable="true"]:focus-visible,
+button.channel-card[data-focusable="true"].tv-focused,
+button.channel-card[data-focusable="true"]:focus,
+button.channel-card[data-focusable="true"]:focus-visible,
+button.episode-card[data-focusable="true"].tv-focused,
+button.episode-card[data-focusable="true"]:focus,
+button.episode-card[data-focusable="true"]:focus-visible,
+.poster-card.tv-focused,
+.poster-card:focus,
+.poster-card:focus-visible,
+.channel-card.tv-focused,
+.channel-card:focus,
+.channel-card:focus-visible,
+.episode-card.tv-focused,
+.episode-card:focus,
+.episode-card:focus-visible {
+  background: var(--bg-card-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 0 0 0 2.5px #ffffff, 0 16px 36px rgba(0, 0, 0, 0.72) !important;
+  transform: scale3d(1.045, 1.045, 1);
+  z-index: 15;
+}
+
+button.poster-card[data-focusable="true"].tv-focused .poster-caption,
+button.poster-card[data-focusable="true"]:focus .poster-caption,
+.poster-card.tv-focused .poster-caption {
+  background: #1c1c22 !important;
+}
+
+button.poster-card[data-focusable="true"].tv-focused .poster-title,
+button.poster-card[data-focusable="true"]:focus .poster-title,
+.poster-card.tv-focused .poster-title,
+button.channel-card[data-focusable="true"].tv-focused .channel-name,
+button.channel-card[data-focusable="true"]:focus .channel-name,
+.channel-card.tv-focused .channel-name,
+button.episode-card[data-focusable="true"].tv-focused .episode-title,
+button.episode-card[data-focusable="true"]:focus .episode-title,
+.episode-card.tv-focused .episode-title {
+  color: #ffffff !important;
+}
+
+button.poster-card[data-focusable="true"].tv-focused .poster-sub,
+button.poster-card[data-focusable="true"]:focus .poster-sub,
+.poster-card.tv-focused .poster-sub,
+button.channel-card[data-focusable="true"].tv-focused .channel-num,
+button.channel-card[data-focusable="true"]:focus .channel-num,
+.channel-card.tv-focused .channel-num,
+button.episode-card[data-focusable="true"].tv-focused .episode-dur,
+button.episode-card[data-focusable="true"]:focus .episode-dur,
+.episode-card.tv-focused .episode-dur {
+  color: rgba(235, 235, 245, 0.75) !important;
+}
+
+button.channel-card[data-focusable="true"].tv-focused .channel-logo-box,
+button.channel-card[data-focusable="true"]:focus .channel-logo-box,
+.channel-card.tv-focused .channel-logo-box {
+  background: #0d0d10 !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.episode-card.tv-focused .episode-num-badge {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* Desktop Pointer Hover Subtle Feedback (Web Browser) */
+@media (hover: hover) {
+  button[data-focusable="true"]:not(.tv-focused):hover {
+    border-color: var(--border-strong);
+  }
+  .poster-card:not(.tv-focused):hover,
+  .channel-card:not(.tv-focused):hover,
+  .episode-card:not(.tv-focused):hover {
+    transform: scale3d(1.022, 1.022, 1);
+    border-color: rgba(255, 255, 255, 0.32);
+    background: var(--bg-card-elevated);
+  }
+}
+
+/* Text Inputs: Stay Dark & Legible with Apple Focus Ring */
+input[data-focusable="true"].tv-focused,
+input[data-focusable="true"]:focus {
+  background-color: var(--bg-input-focus) !important;
+  color: var(--text-primary) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.38) !important;
+  transform: none;
   z-index: 10;
 }
 
-.btn-primary-tv.tv-focused,
-.btn-tv-white.tv-focused,
-.osd-btn-primary.tv-focused {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  box-shadow: 0 0 0 3px #0a84ff !important;
+@media (prefers-reduced-motion: reduce) {
+  [data-focusable="true"],
+  .player-osd {
+    transition: none !important;
+  }
 }
 
 /* ==========================================================================
@@ -107,17 +302,17 @@ img:not([src]) {
 }
 
 /* ==========================================================================
-   1. LOGIN SCREEN
+   1. LOGIN SCREEN (Apple HIG Sheet + Segmented Control)
    ========================================================================== */
 .login-screen {
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 28px;
 }
 
 .login-container {
   width: 100%;
-  max-width: 740px;
+  max-width: 680px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -125,50 +320,77 @@ img:not([src]) {
 
 .login-brand {
   text-align: center;
-  margin-bottom: 18px;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-squircle-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #2c2c30 0%, #141417 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--specular-inset), 0 10px 26px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  margin-bottom: 12px;
+}
+
+.app-squircle-icon svg {
+  width: 28px;
+  height: 28px;
 }
 
 .apple-tv-logo {
   display: inline-flex;
   align-items: center;
-  font-size: 36px;
-  font-weight: 800;
-  letter-spacing: -0.8px;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.032em;
+  color: var(--text-primary);
 }
 
 .plus-badge {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
-  padding: 3px 10px;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
   border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
   margin-left: 10px;
 }
 
 .login-subtitle {
   margin-top: 6px;
   font-size: 14px;
+  font-weight: 400;
+  letter-spacing: -0.008em;
   color: var(--text-secondary);
 }
 
-/* Login Mode Tabs */
+/* Apple Segmented Control */
 .login-tabs {
   display: flex;
   width: 100%;
-  padding: 6px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  padding: 4px;
+  background: rgba(118, 118, 128, 0.22);
+  border: 1px solid var(--border-hairline);
+  border-radius: 14px;
   margin-bottom: 16px;
 }
 
 .login-tab {
   flex: 1;
   background: transparent;
-  border: 1.5px solid transparent;
-  border-radius: 12px;
-  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 12px;
   color: var(--text-secondary);
   cursor: pointer;
   display: flex;
@@ -178,12 +400,13 @@ img:not([src]) {
 }
 
 .login-tab + .login-tab {
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 .login-tab .tab-title {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
@@ -194,17 +417,19 @@ img:not([src]) {
 }
 
 .login-tab.active {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* Login Form Card */
+/* Login Liquid Glass Sheet */
 .login-card {
   width: 100%;
-  background: var(--bg-surface);
+  background: var(--material-thick);
   border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 24px 60px rgba(0, 0, 0, 0.65);
   border-radius: var(--radius-lg);
-  padding: 24px 28px;
+  padding: 26px 30px;
 }
 
 .login-panel {
@@ -219,7 +444,7 @@ img:not([src]) {
 .field-row.two-cols {
   display: flex;
   width: 100%;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
 }
 
 .field-row.two-cols > .field-group {
@@ -233,27 +458,32 @@ img:not([src]) {
 .field-group {
   display: flex;
   flex-direction: column;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .field-group label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 7px;
+  padding-left: 2px;
 }
 
 .field-group input {
   width: 100%;
-  background: #0d1017;
-  border: 1.5px solid var(--border-subtle);
+  background: var(--bg-input);
+  border: 1px solid var(--border-hairline);
   border-radius: var(--radius-sm);
-  padding: 12px 14px;
+  padding: 13px 15px;
   color: var(--text-primary);
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.field-group input::placeholder {
+  color: var(--text-muted);
 }
 
 .preset-pills {
@@ -263,110 +493,139 @@ img:not([src]) {
 
 .preset-pill {
   flex: 1;
-  min-width: 150px;
-  padding: 10px 12px;
+  min-width: 140px;
+  padding: 10px 14px;
   margin-right: 8px;
   margin-bottom: 6px;
   border-radius: var(--radius-sm);
-  background: #0d1017;
-  border: 1.5px solid var(--border-subtle);
+  background: var(--bg-input);
+  border: 1px solid var(--border-hairline);
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
+.preset-pill:last-child {
+  margin-right: 0;
+}
+
 .preset-pill.active {
-  background: rgba(10, 132, 255, 0.25);
+  background: rgba(10, 132, 255, 0.24);
   border-color: var(--accent-blue);
-  color: #fff;
+  color: #ffffff;
 }
 
 .login-error {
-  margin-top: 8px;
-  margin-bottom: 8px;
-  padding: 10px 14px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding: 11px 14px;
   border-radius: var(--radius-sm);
-  background: rgba(255, 59, 48, 0.18);
-  border: 1px solid rgba(255, 59, 48, 0.5);
-  color: #ff8a80;
+  background: rgba(255, 69, 58, 0.16);
+  border: 1px solid rgba(255, 69, 58, 0.42);
+  color: #ff9f99;
   font-size: 13px;
+  font-weight: 500;
   text-align: center;
 }
 
 .login-actions {
-  margin-top: 10px;
+  margin-top: 6px;
 }
 
 .btn-primary-tv {
   width: 100%;
   padding: 14px 24px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   background: var(--accent-white);
-  color: #000;
-  border: 2px solid transparent;
-  font-size: 16px;
-  font-weight: 700;
+  color: #000000;
+  border: 1.5px solid transparent;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
 }
 
 .login-footer-hint {
-  margin-top: 12px;
+  margin-top: 16px;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
 }
 
 /* ==========================================================================
-   2. MAIN APP SCREEN & TOP NAVIGATION BAR
+   2. MAIN APP SCREEN & FLOATING tvOS LIQUID GLASS NAVIGATION BAR
    ========================================================================== */
 .app-screen {
   flex-direction: column;
 }
 
 .tvos-header {
-  height: 70px;
-  padding: 0 36px;
+  height: 74px;
+  padding: 0 42px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 20;
+  z-index: 25;
   flex-shrink: 0;
 }
 
 .tvos-brand {
   display: flex;
   align-items: center;
-  font-size: 22px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--text-primary);
 }
 
+.brand-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  color: var(--text-primary);
+}
+
+.brand-glyph svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Authentic tvOS Floating Capsule Tab Bar */
 .tvos-nav-pill {
   display: flex;
   align-items: center;
-  padding: 5px 8px;
-  background: var(--bg-pill);
+  padding: 4px 5px;
+  background: var(--material-pill);
   border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 10px 30px rgba(0, 0, 0, 0.45);
   border-radius: var(--radius-pill);
 }
 
 .nav-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   color: var(--text-secondary);
-  padding: 8px 16px;
-  margin: 0 2px;
+  padding: 7px 17px;
+  margin: 0 1px;
   border-radius: var(--radius-pill);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   cursor: pointer;
 }
 
 .nav-item.active {
-  background: #ffffff;
-  color: #07080d;
-  font-weight: 700;
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 .tvos-status {
@@ -375,24 +634,37 @@ img:not([src]) {
 }
 
 .status-pill {
+  display: inline-flex;
+  align-items: center;
   font-size: 12px;
   font-weight: 600;
-  padding: 4px 10px;
-  margin-right: 12px;
+  padding: 4px 11px;
+  margin-right: 14px;
   border-radius: var(--radius-pill);
-  background: rgba(48, 209, 88, 0.16);
-  border: 1px solid rgba(48, 209, 88, 0.4);
-  color: #4cd964;
+  background: rgba(48, 209, 88, 0.14);
+  border: 1px solid rgba(48, 209, 88, 0.32);
+  color: var(--accent-green);
+}
+
+.status-pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  margin-right: 6px;
 }
 
 .clock-display {
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
 }
 
 /* ==========================================================================
-   Main Content Area & Sections
+   Main Content Area & Scroll Containers
    ========================================================================== */
 .tvos-main {
   flex: 1;
@@ -401,12 +673,23 @@ img:not([src]) {
 }
 
 .content-section {
+  position: relative;
   width: 100%;
   height: 100%;
   display: none;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 36px 40px;
+  padding: 6px 42px 44px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+#section-live,
+#section-movies,
+#section-series {
+  overflow: hidden;
+  padding: 6px 42px 12px;
 }
 
 .content-section.active {
@@ -416,31 +699,40 @@ img:not([src]) {
 .content-section::-webkit-scrollbar,
 .category-list::-webkit-scrollbar,
 .home-row-track::-webkit-scrollbar,
-.episodes-list::-webkit-scrollbar {
+.episodes-list::-webkit-scrollbar,
+.osd-drawer-list::-webkit-scrollbar,
+.osd-popover-list::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
 
 .content-section::-webkit-scrollbar-thumb,
-.category-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+.category-list::-webkit-scrollbar-thumb,
+.osd-drawer-list::-webkit-scrollbar-thumb,
+.osd-popover-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
   border-radius: 99px;
 }
 
+.home-row-track::-webkit-scrollbar {
+  height: 0;
+}
+
 /* ==========================================================================
-   HOME SECTION: Hero Banner & Horizontal Shelves
+   HOME SECTION: Apple TV+ Top Shelf Showcase & Horizontal Shelves
    ========================================================================== */
 .hero-banner {
   position: relative;
   width: 100%;
-  height: 270px;
-  border-radius: var(--radius-lg);
+  height: 310px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
   border: 1px solid var(--border-subtle);
-  margin-bottom: 24px;
+  box-shadow: var(--specular-inset), 0 20px 50px rgba(0, 0, 0, 0.6);
+  margin-bottom: 28px;
   display: flex;
   align-items: flex-end;
-  background: #101420;
+  background: #101014;
 }
 
 .hero-backdrop-wrap {
@@ -455,8 +747,8 @@ img:not([src]) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 25%;
-  opacity: 0.55;
+  object-position: center 22%;
+  opacity: 0.68;
 }
 
 .hero-gradient {
@@ -465,14 +757,15 @@ img:not([src]) {
   right: 0;
   bottom: 0;
   left: 0;
-  background: linear-gradient(90deg, #07080d 0%, rgba(7, 8, 13, 0.8) 50%, rgba(7, 8, 13, 0.2) 100%),
-              linear-gradient(180deg, rgba(7, 8, 13, 0.1) 0%, #07080d 100%);
+  background:
+    linear-gradient(90deg, rgba(6, 6, 8, 0.96) 0%, rgba(6, 6, 8, 0.78) 46%, rgba(6, 6, 8, 0.18) 100%),
+    linear-gradient(180deg, rgba(6, 6, 8, 0.08) 0%, rgba(6, 6, 8, 0.55) 68%, rgba(6, 6, 8, 0.96) 100%);
 }
 
 .hero-content {
   position: relative;
   z-index: 2;
-  padding: 24px 30px;
+  padding: 30px 36px;
   max-width: 680px;
   display: flex;
   flex-direction: column;
@@ -481,45 +774,69 @@ img:not([src]) {
 .hero-badges {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 
 .badge-glass {
-  padding: 4px 10px;
+  padding: 4px 11px;
   margin-right: 8px;
   border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ffffff;
 }
 
 .badge-outline {
   padding: 3px 9px;
   margin-right: 8px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.26);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--text-secondary);
+}
+
+.badge-4k {
+  padding: 3px 9px;
+  margin-right: 8px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ffffff 0%, #dcdce4 100%);
+  color: #000000;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .hero-title {
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.15;
-  margin-bottom: 6px;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #ffffff;
 }
 
 .hero-desc {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
-  line-height: 1.4;
-  margin-bottom: 14px;
-  max-height: 38px;
+  line-height: 1.45;
+  letter-spacing: -0.008em;
+  margin-bottom: 18px;
+  max-height: 41px;
   overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .hero-buttons {
@@ -531,37 +848,55 @@ img:not([src]) {
   margin-left: 12px;
 }
 
+/* Apple TV Pill Buttons */
 .btn-tv-white {
-  padding: 10px 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 24px;
   border-radius: var(--radius-pill);
   background: #ffffff;
-  color: #050608;
-  border: 2px solid transparent;
+  color: #000000;
+  border: 1.5px solid transparent;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
 }
 
 .btn-tv-glass {
-  padding: 10px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 22px;
   border-radius: var(--radius-pill);
-  background: #1b2030;
+  background: rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
-  border: 1.5px solid var(--border-subtle);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
 }
 
 .btn-tv-danger {
-  padding: 10px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 22px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 59, 48, 0.2);
+  background: rgba(255, 69, 58, 0.16);
   color: #ff6961;
-  border: 1.5px solid rgba(255, 59, 48, 0.45);
+  border: 1px solid rgba(255, 69, 58, 0.36);
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
 }
 
 /* Horizontal Shelves on Home */
@@ -573,137 +908,179 @@ img:not([src]) {
 .home-row {
   display: flex;
   flex-direction: column;
-  margin-bottom: 22px;
+  margin-bottom: 24px;
 }
 
 .home-row-title {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.018em;
   color: var(--text-primary);
   margin-bottom: 10px;
-  padding-left: 4px;
+  padding-left: 6px;
 }
 
 .home-row-track {
+  position: relative;
   display: flex;
   overflow-x: auto;
-  padding: 8px 6px 14px;
+  padding: 10px 8px 18px;
 }
 
 .home-row-track > * + * {
-  margin-left: 14px;
+  margin-left: 16px;
 }
 
 /* ==========================================================================
-   SPLIT-VIEW CATALOG LAYOUT (Categories Left + Content Right)
+   SPLIT-VIEW CATALOG LAYOUT (Apple Sidebar + Content Grid)
    ========================================================================== */
 .catalog-layout {
   display: flex;
-  height: calc(100vh - 86px);
+  height: calc(100vh - 88px);
+  gap: 28px;
 }
 
 .category-sidebar {
-  width: 255px;
+  width: 270px;
   flex-shrink: 0;
-  margin-right: 22px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  margin-right: 0;
+  background: var(--material-sidebar);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--specular-inset);
+  border-radius: 20px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
 .sidebar-header {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border-hairline);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .sidebar-header h2 {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.05em;
 }
 
 .count-pill {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.09);
   color: var(--text-secondary);
 }
 
 .category-list {
+  position: relative;
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .cat-btn {
   width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
   text-align: left;
-  padding: 10px 12px;
-  margin-bottom: 4px;
-  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  margin-bottom: 0;
+  border-radius: 12px;
   background: transparent;
-  border: 1.5px solid transparent;
+  border: 1px solid transparent;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
+  letter-spacing: -0.008em;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
+  contain: layout style;
+  touch-action: pan-y;
+  transition: background 150ms ease, color 150ms ease;
 }
 
 .cat-btn.active {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.14);
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .catalog-main {
+  position: relative;
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: 4px 8px 40px 4px;
+  padding: 4px 12px 48px 4px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .catalog-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.toolbar-headings {
+  min-width: 0;
+  margin-right: 16px;
 }
 
 .catalog-title {
-  font-size: 22px;
+  font-size: 25px;
   font-weight: 700;
+  letter-spacing: -0.024em;
+  color: var(--text-primary);
 }
 
 .catalog-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: 3px;
+  letter-spacing: -0.006em;
+}
+
+/* Apple Spotlight-Style Search Input (Inline Data-URI SVG Icon) */
+.apple-search-input {
+  background-color: var(--bg-input);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Ccircle cx='8.8' cy='8.8' r='5.4' stroke='rgba(235,235,245,0.45)' stroke-width='1.8'/%3E%3Cpath d='M13 13l3.6 3.6' stroke='rgba(235,235,245,0.45)' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 13px center;
+  background-size: 15px 15px;
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+}
+
+.apple-search-input::placeholder {
+  color: var(--text-muted);
 }
 
 .toolbar-search input {
-  width: 240px;
-  padding: 9px 14px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-card);
-  border: 1.5px solid var(--border-subtle);
-  color: var(--text-primary);
-  font-size: 13px;
+  width: 248px;
+  padding: 9px 16px 9px 36px;
+  font-size: 13.5px;
+  font-weight: 400;
 }
 
 /* ==========================================================================
@@ -713,11 +1090,12 @@ img:not([src]) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  margin-bottom: 14px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
   border-radius: var(--radius-md);
-  background: #101420;
-  border: 1px solid var(--border-subtle);
+  background: var(--material-regular);
+  border: 1px solid var(--border-hairline);
+  box-shadow: var(--specular-inset);
 }
 
 .epg-info-col {
@@ -731,14 +1109,26 @@ img:not([src]) {
   margin-bottom: 6px;
 }
 
+.epg-channel-header strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .epg-tag {
   font-size: 10px;
-  font-weight: 800;
-  padding: 2px 7px;
-  margin-right: 8px;
-  border-radius: 5px;
-  background: var(--accent-blue);
-  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  margin-right: 9px;
+  border-radius: var(--radius-pill);
+  background: rgba(10, 132, 255, 0.22);
+  border: 1px solid rgba(10, 132, 255, 0.45);
+  color: #64d2ff;
+  flex-shrink: 0;
 }
 
 .epg-programs-row {
@@ -749,12 +1139,12 @@ img:not([src]) {
 .epg-prog-item {
   display: flex;
   align-items: center;
-  margin-right: 22px;
-  font-size: 12px;
+  margin-right: 24px;
+  font-size: 12.5px;
 }
 
 .epg-prog-label {
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-muted);
   margin-right: 6px;
 }
@@ -767,26 +1157,32 @@ img:not([src]) {
 .pip-controls-box {
   display: flex;
   align-items: center;
-  margin-left: 12px;
+  margin-left: 14px;
+  flex-shrink: 0;
 }
 
 .pip-controls-box > button + button {
   margin-left: 8px;
 }
 
-/* Web Mini Player Mode */
+/* Web Picture-in-Picture Floating Window */
+.mini-pip-bar {
+  display: none;
+}
+
 .player-overlay.mini-pip-mode {
   top: auto !important;
   left: auto !important;
   right: 28px !important;
   bottom: 24px !important;
-  width: 320px !important;
-  height: 180px !important;
-  border-radius: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+  width: 348px !important;
+  height: 196px !important;
+  border-radius: 16px;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.85);
   z-index: 90;
   pointer-events: auto;
+  cursor: pointer;
 }
 
 .player-overlay.mini-pip-mode .video-element {
@@ -798,35 +1194,103 @@ img:not([src]) {
   display: none !important;
 }
 
+.player-overlay.mini-pip-mode .mini-pip-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 16px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0) 100%);
+}
+
+.mini-pip-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #f5f5f7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+.mini-pip-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.mini-pip-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(24, 24, 28, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 140ms var(--ease-apple);
+}
+
+.mini-pip-btn + .mini-pip-btn {
+  margin-left: 6px;
+}
+
+.mini-pip-btn:hover {
+  background: #ffffff;
+  color: #000000;
+  transform: scale3d(1.08, 1.08, 1);
+}
+
+.mini-pip-btn-close:hover {
+  background: var(--accent-live);
+  border-color: var(--accent-live);
+  color: #ffffff;
+}
+
 /* Live Channel Quick Drawer inside Player OSD */
 .osd-channel-drawer {
-  width: 360px;
+  width: 350px;
   max-height: 52vh;
-  background: rgba(16, 19, 28, 0.96);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 16px;
-  padding: 12px;
+  background: var(--material-thick);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 20px 50px rgba(0, 0, 0, 0.7);
+  border-radius: 20px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .osd-drawer-header {
   display: flex;
   flex-direction: column;
-  padding-bottom: 8px;
+  padding-bottom: 10px;
   margin-bottom: 8px;
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: 14px;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
 .osd-drawer-epg {
-  font-size: 11px;
-  color: #64d2ff;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
   margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .osd-drawer-list {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -837,61 +1301,70 @@ img:not([src]) {
   width: 100%;
   text-align: left;
   padding: 9px 12px;
-  margin-bottom: 4px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1.5px solid transparent;
-  color: var(--text-primary);
+  margin-bottom: 3px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex-shrink: 0;
+  contain: layout style;
 }
 
 .osd-drawer-item.active {
-  background: rgba(10, 132, 255, 0.28);
-  border-color: var(--accent-blue);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 600;
 }
 
 /* ==========================================================================
-   LIVE TV CARDS
+   LIVE TV CHANNEL CARDS
    ========================================================================== */
 .live-channels-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
-  grid-gap: 12px;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-gap: 16px;
+  gap: 16px;
+  padding: 6px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .channel-card {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
   background: var(--bg-card);
-  border: 1.5px solid var(--border-subtle);
+  border: 1px solid var(--border-hairline);
   cursor: pointer;
   text-align: left;
   color: var(--text-primary);
-  height: 70px;
+  height: 76px;
+  contain: layout style;
+  touch-action: pan-y;
 }
 
 .channel-logo-box {
-  width: 46px;
-  height: 46px;
-  margin-right: 12px;
-  border-radius: 10px;
-  background: #0c0e14;
+  width: 48px;
+  height: 48px;
+  margin-right: 13px;
+  border-radius: 11px;
+  background: #0b0b0e;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   flex-shrink: 0;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
   color: var(--text-secondary);
 }
 
@@ -899,7 +1372,7 @@ img:not([src]) {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  padding: 3px;
+  padding: 4px;
 }
 
 .channel-meta {
@@ -915,38 +1388,66 @@ img:not([src]) {
 
 .channel-num {
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
-  margin-right: 6px;
+  margin-right: 8px;
 }
 
 .live-dot {
+  display: inline-flex;
+  align-items: center;
   font-size: 10px;
   font-weight: 700;
-  color: #ff453a;
+  letter-spacing: 0.03em;
+  color: var(--accent-live);
+}
+
+.live-dot::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-live);
+  margin-right: 4px;
+}
+
+.channel-4k-badge {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #ffffff 0%, #d8d8e0 100%);
+  color: #000000;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .channel-name {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* ==========================================================================
-   POSTER CARDS (Fixed Height for Chromium 78 compatibility & Zero Reflow)
+   POSTER CARDS (Apple TV+ 2:3 Cinema Tiles — Zero Layout Reflow)
    ========================================================================== */
 .poster-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  grid-gap: 16px;
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(154px, 1fr));
+  grid-gap: 18px;
+  gap: 18px;
+  padding: 6px;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .poster-card {
   background: var(--bg-card);
-  border: 1.5px solid var(--border-subtle);
+  border: 1px solid var(--border-hairline);
   border-radius: var(--radius-md);
   overflow: hidden;
   cursor: pointer;
@@ -955,109 +1456,197 @@ img:not([src]) {
   text-align: left;
   color: var(--text-primary);
   width: 100%;
+  contain: layout style;
+  touch-action: pan-y;
 }
 
 .home-row-track .poster-card {
-  width: 155px;
+  width: 158px;
   flex-shrink: 0;
 }
 
 .home-row-track .channel-card {
-  width: 240px;
+  width: 248px;
   flex-shrink: 0;
 }
 
 .poster-thumb-wrap {
   position: relative;
   width: 100%;
-  height: 215px;
-  background: #0c0e14;
+  height: 224px;
+  background: linear-gradient(160deg, #1b1b20 0%, #0e0e11 100%);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .poster-thumb-wrap img {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+.poster-fallback {
+  position: absolute;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.poster-card.is-4k {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.poster-4k-badge {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  left: 8px;
+  padding: 2.5px 7px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #ffffff 0%, #dcdce4 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+  color: #000000;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
 .poster-rating-badge {
   position: absolute;
+  z-index: 2;
   top: 8px;
   right: 8px;
   padding: 3px 7px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.82);
+  border-radius: var(--radius-pill);
+  background: rgba(12, 12, 14, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   font-size: 11px;
-  font-weight: 700;
-  color: #ffd60a;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent-gold);
 }
 
 .poster-caption {
-  padding: 9px 10px;
+  padding: 10px 11px 11px;
+  background: #141418;
 }
 
 .poster-title {
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .poster-sub {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 2px;
 }
 
 .load-more-wrap {
-  margin-top: 20px;
+  margin-top: 24px;
   display: flex;
   justify-content: center;
 }
 
 /* ==========================================================================
-   SEARCH & ACCOUNT SECTIONS
+   SEARCH & ACCOUNT SECTIONS (Spotlight & Apple Settings Aesthetic)
    ========================================================================== */
 .single-page-wrap {
-  max-width: 1160px;
+  max-width: 1180px;
   margin: 0 auto;
+}
+
+.search-header-block {
+  margin-bottom: 16px;
 }
 
 .search-hero-box {
   display: flex;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
-.search-hero-box input {
+.apple-search-lg {
   flex: 1;
   margin-right: 12px;
-  padding: 13px 18px;
-  border-radius: var(--radius-pill);
-  background: var(--bg-card);
-  border: 1.5px solid var(--border-subtle);
-  color: var(--text-primary);
-  font-size: 15px;
+  padding: 14px 20px 14px 44px;
+  background-position: 17px center;
+  background-size: 17px 17px;
+  font-size: 16px;
+  letter-spacing: -0.01em;
 }
 
 .account-wrap {
-  max-width: 700px;
-  padding-top: 16px;
+  max-width: 680px;
+  padding-top: 18px;
 }
 
 .account-card {
-  background: var(--bg-surface);
+  background: var(--material-thick);
   border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 20px 50px rgba(0, 0, 0, 0.55);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 28px 30px;
 }
 
 .account-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.account-profile-row {
+  display: flex;
+  align-items: center;
+}
+
+.account-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #323236 0%, #1c1c1f 100%);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  color: var(--text-primary);
+}
+
+.account-avatar svg {
+  width: 24px;
+  height: 24px;
+}
+
+.account-eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.account-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
 }
 
 .account-stats-grid {
@@ -1065,23 +1654,34 @@ img:not([src]) {
   grid-template-columns: repeat(2, 1fr);
   grid-gap: 12px;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .stat-box {
-  padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  background: #0d1017;
-  border: 1px solid var(--border-subtle);
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--border-hairline);
   display: flex;
   flex-direction: column;
 }
 
 .stat-label {
   font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: 4px;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+}
+
+.stat-box strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .account-actions {
@@ -1094,7 +1694,7 @@ img:not([src]) {
 }
 
 /* ==========================================================================
-   3. DETAILS MODAL (MOVIES & SERIES EPISODES)
+   3. DETAILS MODAL (Apple TV+ Movie / Series Showcase)
    ========================================================================== */
 .details-modal {
   position: fixed;
@@ -1103,9 +1703,67 @@ img:not([src]) {
   bottom: 0;
   left: 0;
   z-index: 50;
-  background: var(--bg-deep);
+  background: #000000;
   overflow-y: auto;
-  padding: 32px 44px;
+  padding: 0 48px 48px;
+}
+
+/* Sticky Apple TV+ Top Navigation Bar */
+.details-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 0 18px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.94) 0%, rgba(0, 0, 0, 0.65) 75%, transparent 100%);
+  margin-bottom: 18px;
+}
+
+.details-nav-back-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 18px 9px 13px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.20);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  transition: background 160ms var(--ease-apple), transform 160ms var(--ease-apple), border-color 160ms var(--ease-apple);
+}
+
+.details-nav-back-btn svg {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+}
+
+.details-nav-back-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.38);
+  transform: scale3d(1.03, 1.03, 1);
+}
+
+.details-nav-back-btn.tv-focused,
+.details-nav-back-btn:focus-visible {
+  background: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65) !important;
+  transform: scale3d(1.05, 1.05, 1);
+}
+
+.details-top-bar-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .details-backdrop-wrap {
@@ -1122,7 +1780,7 @@ img:not([src]) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.22;
+  opacity: 0.28;
 }
 
 .details-vignette {
@@ -1131,13 +1789,15 @@ img:not([src]) {
   right: 0;
   bottom: 0;
   left: 0;
-  background: linear-gradient(90deg, #07080d 20%, rgba(7, 8, 13, 0.75) 100%);
+  background:
+    linear-gradient(90deg, #000000 18%, rgba(0, 0, 0, 0.80) 62%, rgba(0, 0, 0, 0.50) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, #000000 92%);
 }
 
 .details-container {
   position: relative;
   z-index: 2;
-  max-width: 1120px;
+  max-width: 1140px;
   margin: 0 auto;
 }
 
@@ -1147,13 +1807,14 @@ img:not([src]) {
 }
 
 .details-poster {
-  width: 195px;
-  height: 290px;
-  margin-right: 28px;
+  width: 204px;
+  height: 306px;
+  margin-right: 34px;
   object-fit: cover;
-  border-radius: var(--radius-md);
+  border-radius: 18px;
   border: 1px solid var(--border-subtle);
-  background: #12141c;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.75);
+  background: #141418;
   flex-shrink: 0;
 }
 
@@ -1161,27 +1822,32 @@ img:not([src]) {
   flex: 1;
   display: flex;
   flex-direction: column;
+  padding-top: 4px;
 }
 
 .details-title {
-  font-size: 30px;
-  font-weight: 800;
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
   margin-top: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .details-meta {
-  font-size: 13px;
+  font-size: 13.5px;
+  font-weight: 500;
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .details-plot {
-  font-size: 14px;
-  line-height: 1.5;
-  color: #dcdfe8;
-  max-width: 760px;
-  margin-bottom: 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  letter-spacing: -0.008em;
+  color: rgba(235, 235, 245, 0.80);
+  max-width: 720px;
+  margin-bottom: 22px;
 }
 
 .details-actions {
@@ -1194,66 +1860,70 @@ img:not([src]) {
 }
 
 .series-episodes-section {
-  margin-top: 26px;
-  border-top: 1px solid var(--border-subtle);
-  padding-top: 18px;
+  margin-top: 32px;
+  border-top: 1px solid var(--border-hairline);
+  padding-top: 22px;
 }
 
 .season-selector {
   display: flex;
   overflow-x: auto;
-  padding-bottom: 12px;
+  padding: 4px 4px 14px;
 }
 
 .season-pill {
-  padding: 8px 16px;
+  padding: 8px 18px;
   margin-right: 8px;
   border-radius: var(--radius-pill);
-  background: var(--bg-card);
-  border: 1.5px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-hairline);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .season-pill.active {
-  background: #fff;
-  color: #000;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
 }
 
 .episodes-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
-  grid-gap: 12px;
-  gap: 12px;
-  margin-top: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-gap: 14px;
+  gap: 14px;
+  padding: 6px;
+  margin-top: 6px;
 }
 
 .episode-card {
   display: flex;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
   background: var(--bg-card);
-  border: 1.5px solid var(--border-subtle);
+  border: 1px solid var(--border-hairline);
   color: var(--text-primary);
   text-align: left;
   cursor: pointer;
   align-items: center;
+  contain: layout style;
 }
 
 .episode-num-badge {
-  width: 40px;
-  height: 40px;
-  margin-right: 12px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.1);
+  width: 42px;
+  height: 42px;
+  margin-right: 13px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
   font-size: 13px;
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 
@@ -1263,21 +1933,22 @@ img:not([src]) {
 }
 
 .episode-title {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .episode-dur {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 2px;
 }
 
 /* ==========================================================================
-   4. WEB VIDEO PLAYER & OSD OVERLAY
+   4. WEB VIDEO PLAYER & tvOS LIQUID GLASS OSD
    ========================================================================== */
 .player-overlay {
   position: fixed;
@@ -1293,11 +1964,23 @@ img:not([src]) {
   overflow: hidden;
 }
 
+.player-overlay.cursor-idle {
+  cursor: none;
+}
+
 .video-element {
   width: 100vw;
   height: 100vh;
   object-fit: contain;
   background: #000000;
+}
+
+.video-element::cue {
+  background: rgba(0, 0, 0, 0.74);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+  font-weight: 600;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .video-element.aspect-cover {
@@ -1314,41 +1997,55 @@ img:not([src]) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 24px;
-  border-radius: var(--radius-md);
-  background: rgba(15, 17, 24, 0.88);
+  padding: 18px 26px;
+  border-radius: 20px;
+  background: rgba(20, 20, 23, 0.90);
+  border: 1px solid var(--border-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
 .apple-spinner {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   margin-bottom: 10px;
-  border: 3px solid rgba(255, 255, 255, 0.22);
+  border: 2.5px solid rgba(255, 255, 255, 0.20);
   border-top-color: #ffffff;
   border-radius: 50%;
-  animation: spin 0.75s linear infinite;
+  animation: spin 0.72s linear infinite;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .player-error-box {
   position: absolute;
   z-index: 105;
-  background: #141722;
+  background: var(--material-thick);
   border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 24px 60px rgba(0, 0, 0, 0.8);
   border-radius: var(--radius-lg);
-  padding: 24px 30px;
+  padding: 28px 32px;
   text-align: center;
   max-width: 420px;
 }
 
+.player-error-box h3 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
 .player-error-box p {
   color: var(--text-secondary);
-  font-size: 13px;
-  margin: 8px 0 16px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  margin: 8px 0 20px;
 }
 
 .player-error-actions {
@@ -1370,9 +2067,10 @@ img:not([src]) {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 24px 36px 28px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.65) 0%, transparent 25%, transparent 60%, rgba(0,0,0,0.85) 100%);
+  padding: 28px 42px 32px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.58) 0%, transparent 22%, transparent 62%, rgba(0, 0, 0, 0.82) 100%);
   opacity: 1;
+  transition: opacity 180ms ease;
 }
 
 .player-osd.osd-hidden {
@@ -1391,42 +2089,229 @@ img:not([src]) {
   align-items: center;
 }
 
+.osd-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 15px 7px 11px;
+  margin-right: 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(28, 28, 32, 0.90);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.osd-res-badge {
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.osd-res-badge.res-4k {
+  background: linear-gradient(135deg, #ffffff 0%, #dcdce4 100%);
+  border-color: #ffffff;
+  color: #000000;
+  font-weight: 800;
+}
+
 .osd-live-badge {
+  display: inline-flex;
+  align-items: center;
   padding: 5px 12px;
   margin-right: 8px;
   border-radius: var(--radius-pill);
   background: var(--accent-live);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 800;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffffff;
+  margin-right: 6px;
 }
 
 .osd-meta-pill {
-  padding: 5px 12px;
+  padding: 5px 13px;
   border-radius: var(--radius-pill);
-  background: rgba(20, 23, 33, 0.9);
+  background: rgba(28, 28, 32, 0.88);
   border: 1px solid var(--border-subtle);
   font-size: 12px;
   font-weight: 600;
+  color: var(--text-primary);
+}
+
+.osd-top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .osd-back-hint {
   padding: 6px 14px;
   border-radius: var(--radius-pill);
-  background: rgba(20, 23, 33, 0.9);
-  border: 1px solid var(--border-subtle);
+  background: rgba(28, 28, 32, 0.88);
+  border: 1px solid var(--border-hairline);
   font-size: 12px;
   color: var(--text-secondary);
 }
 
-.osd-bottom-sheet {
+.osd-top-exit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 69, 58, 0.22);
+  border: 1px solid rgba(255, 69, 58, 0.45);
+  color: #ff8a80;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.osd-top-exit-btn:hover,
+.osd-top-exit-btn:active,
+.osd-top-exit-btn.tv-focused {
+  background: rgba(255, 69, 58, 0.45);
+  border-color: #ff453a;
+  color: #ffffff;
+  transform: scale(1.04);
+}
+
+/* Apple TV+ Floating Player Control Deck & Track Picker Popover */
+.osd-bottom-wrap {
+  position: relative;
   width: 100%;
   max-width: 980px;
   margin: 0 auto;
-  padding: 18px 24px;
+}
+
+.osd-tracks-popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  width: 310px;
+  max-height: 46vh;
+  background: var(--material-thick);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 22px 54px rgba(0, 0, 0, 0.82);
   border-radius: 20px;
-  background: rgba(18, 21, 30, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  z-index: 110;
+}
+
+.osd-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+
+.osd-popover-header strong {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.osd-popover-close {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.osd-popover-list {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.osd-popover-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  padding: 9px 12px;
+  margin-bottom: 3px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.osd-popover-item.active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.osd-popover-check {
+  font-size: 13px;
+  font-weight: 700;
+  margin-left: 10px;
+  flex-shrink: 0;
+}
+
+.osd-popover-divider {
+  height: 1px;
+  background: var(--border-hairline);
+  margin: 6px 4px;
+  flex-shrink: 0;
+}
+
+.osd-popover-note {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.osd-bottom-sheet {
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 85vh;
+  padding: 18px 24px;
+  border-radius: 24px;
+  background: var(--material-thick);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--specular-inset), 0 24px 60px rgba(0, 0, 0, 0.75);
   display: flex;
   flex-direction: column;
 }
@@ -1434,16 +2319,17 @@ img:not([src]) {
 .osd-media-header {
   display: flex;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .osd-logo {
-  width: 44px;
-  height: 44px;
-  margin-right: 12px;
-  border-radius: 10px;
+  width: 46px;
+  height: 46px;
+  margin-right: 14px;
+  border-radius: 11px;
   object-fit: contain;
-  background: #0c0e14;
+  background: #0c0c0f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 4px;
 }
 
@@ -1453,22 +2339,32 @@ img:not([src]) {
 }
 
 .osd-titles h2 {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .osd-titles p {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-secondary);
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .osd-time-display {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  margin-left: 16px;
+}
+
+#osd-time-current {
   color: var(--text-primary);
 }
 
@@ -1477,28 +2373,35 @@ img:not([src]) {
   color: var(--text-muted);
 }
 
-/* Interactive Progress Scrub Bar (Supports D-Pad Left/Right & Click) */
+/* Interactive Progress Scrub Bar (Compositor ScaleY on Focus — Zero Layout Reflow) */
 .osd-progress-wrap {
-  padding: 8px 10px;
+  padding: 10px 12px;
   margin-bottom: 12px;
   cursor: pointer;
-  border-radius: 10px;
-  border: 1.5px solid transparent;
+  border-radius: 12px;
+  border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.04);
+}
+
+.osd-progress-wrap.tv-focused {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+  transform: none;
 }
 
 .osd-progress-track {
   position: relative;
   width: 100%;
-  height: 8px;
+  height: 6px;
   border-radius: 99px;
   background: rgba(255, 255, 255, 0.22);
   overflow: hidden;
+  transition: transform 150ms var(--ease-apple);
 }
 
 .osd-progress-wrap.tv-focused .osd-progress-track {
-  height: 12px;
-  background: rgba(255, 255, 255, 0.35);
+  transform: scaleY(1.65);
+  background: rgba(255, 255, 255, 0.34);
 }
 
 .osd-progress-fill {
@@ -1511,32 +2414,171 @@ img:not([src]) {
 .osd-controls-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  touch-action: pan-x;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 8px;
+  padding: 4px 2px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.osd-controls-row::-webkit-scrollbar {
+  display: none;
 }
 
 .osd-btn {
-  padding: 9px 15px;
-  margin-right: 8px;
-  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  margin: 0;
   border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.008em;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 150ms ease, transform 150ms ease;
 }
 
 .osd-btn-primary {
   background: #ffffff;
   color: #000000;
-  font-weight: 700;
+  border-color: transparent;
+  padding: 8px 18px;
 }
 
 .osd-btn-close {
+  flex-shrink: 0;
   margin-left: auto;
-  margin-right: 0;
-  background: rgba(255, 59, 48, 0.2);
-  border-color: rgba(255, 59, 48, 0.4);
+  background: rgba(255, 69, 58, 0.22);
+  border-color: rgba(255, 69, 58, 0.45);
   color: #ff8a80;
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Responsive Polish for Mobile, Tablets & Touch Screens
+   ========================================================================== */
+@media (max-width: 960px) {
+  .tvos-header {
+    padding: 0 16px;
+  }
+  .content-section {
+    padding: 6px 16px 28px;
+  }
+  #section-live,
+  #section-movies,
+  #section-series {
+    padding: 6px 16px 0;
+  }
+  .catalog-layout {
+    gap: 16px;
+  }
+  .category-sidebar {
+    width: 230px;
+  }
+  .tvos-status .status-pill {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .tvos-header {
+    height: 62px;
+  }
+  .tvos-nav-pill {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+  }
+  .nav-item {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .catalog-layout {
+    flex-direction: column;
+    height: auto;
+    gap: 12px;
+  }
+  .category-sidebar {
+    width: 100%;
+    max-height: 160px;
+  }
+  .category-list {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    touch-action: pan-x;
+    gap: 8px;
+    padding: 8px 6px;
+  }
+  .cat-btn {
+    width: auto;
+    white-space: nowrap;
+    padding: 8px 14px;
+    min-height: 38px;
+  }
+  .live-channels-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .player-osd {
+    padding: 12px 14px 14px;
+  }
+  .osd-bottom-sheet {
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+  .osd-btn {
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+  .osd-back-hint {
+    display: none;
+  }
+}
+
+@media (max-height: 580px) {
+  .player-osd {
+    padding: 10px 16px 12px;
+  }
+  .osd-bottom-sheet {
+    padding: 10px 14px;
+    border-radius: 16px;
+    max-height: 78vh;
+  }
+  .osd-logo {
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+  }
+  .osd-titles h2 {
+    font-size: 15px;
+  }
+  .osd-titles p {
+    font-size: 11px;
+  }
+  .osd-media-header {
+    margin-bottom: 6px;
+  }
+  .osd-progress-wrap {
+    margin-bottom: 6px;
+  }
+  .osd-btn {
+    padding: 6px 11px;
+    font-size: 12px;
+  }
+  .osd-back-hint {
+    display: none;
+  }
 }

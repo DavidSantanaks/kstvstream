@@ -4,8 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#000000" />
-  <title>KS TV-Stream — Apple TV Edition</title>
+  <title>KS TV Player</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./carousels.css" />
+  <link rel="stylesheet" href="./home.css" />
+  <link rel="stylesheet" href="./player.css" />
   <script src="./vendor/hls.min.js"></script>
 </head>
 <body>
@@ -22,17 +27,13 @@
     <div class="login-container">
       <div class="login-brand">
         <div class="app-squircle-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <rect x="2.5" y="4" width="19" height="13" rx="3.2" stroke="currentColor" stroke-width="1.8" />
-            <path d="M8.5 20.2h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
-            <path d="M10.4 8.3l4.2 2.2-4.2 2.2V8.3z" fill="currentColor" />
-          </svg>
+          <img class="app-logo" src="./assets/ks-tv-logo.png" alt="" />
         </div>
         <div class="apple-tv-logo">
           <span class="tv-text">KS TV</span>
           <span class="plus-badge">4K HDR</span>
         </div>
-        <p class="login-subtitle">Experiência de cinema fluida e silenciosa inspirada no tvOS</p>
+        <p class="login-subtitle">Sua TV, seus filmes e suas séries. Em um só lugar.</p>
       </div>
 
       <!-- Apple Segmented Control -->
@@ -139,11 +140,7 @@
     <header class="tvos-header">
       <div class="tvos-brand">
         <span class="brand-glyph" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <rect x="2" y="4" width="20" height="13.5" rx="3.5" stroke="currentColor" stroke-width="2" />
-            <path d="M8.5 20.5h7" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            <path d="M10.2 8.2l4.5 2.55-4.5 2.55V8.2z" fill="currentColor" />
-          </svg>
+          <img class="app-logo" src="./assets/icon-192.png" alt="" />
         </span>
         <span class="tv-text">KS TV</span>
       </div>
@@ -174,18 +171,27 @@
     <main id="main-content" class="tvos-main">
       <!-- ABA 1: INÍCIO (Apple TV+ Top Shelf Showcase & Up Next) -->
       <div id="section-home" class="content-section active">
+        <div class="home-welcome">
+          <div>
+            <p class="home-eyebrow">BOM TER VOCÊ POR AQUI</p>
+            <h1 class="home-welcome-title"><span id="home-greeting">Olá.</span> O que vamos assistir?</h1>
+            <p class="home-welcome-subtitle">Filmes, séries e seus canais. Escolha o que combina com agora.</p>
+          </div>
+          <span class="home-welcome-mark" aria-hidden="true">Seu momento de dar o play.</span>
+        </div>
         <div id="hero-banner" class="hero-banner">
           <div class="hero-backdrop-wrap">
             <img id="hero-backdrop-img" class="hero-backdrop-img" src="" alt="" />
             <div class="hero-gradient"></div>
           </div>
           <div class="hero-content">
+            <p class="hero-eyebrow">UMA IDEIA PARA AGORA</p>
             <div class="hero-badges">
               <span id="hero-badge-type" class="badge-glass">Destaque • KS TV</span>
               <span id="hero-badge-meta" class="badge-outline">4K UHD • HDR</span>
             </div>
-            <h1 id="hero-title" class="hero-title">Carregando catálogo...</h1>
-            <p id="hero-desc" class="hero-desc">Navegue pelos canais ao vivo, filmes em 4K e séries com a fluidez e nitidez do tvOS.</p>
+            <h2 id="hero-title" class="hero-title">Preparando seu próximo play…</h2>
+            <p id="hero-desc" class="hero-desc">Já já tem filme, série e TV ao vivo por aqui. Pode escolher seu lugar no sofá.</p>
             <div class="hero-buttons">
               <button id="btn-hero-play" type="button" class="btn-tv-white" data-focusable="true">
                 <svg class="icon-svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -201,6 +207,9 @@
                 <span>TV ao Vivo</span>
               </button>
             </div>
+          </div>
+          <div class="hero-artwork" aria-hidden="true">
+            <img id="hero-poster-img" class="hero-poster-img" src="" alt="" />
           </div>
         </div>
 
@@ -506,10 +515,13 @@
       </div>
     </div>
 
-    <!-- Apple Activity Indicator -->
-    <div id="player-Spinner" class="player-spinner hidden">
+    <!-- Compact connection status, placed below the transport controls. -->
+    <div id="player-Spinner" class="player-spinner hidden" role="status" aria-live="polite" aria-atomic="true">
       <div class="apple-spinner" aria-hidden="true"></div>
-      <span id="player-loading-text">Conectando...</span>
+      <div class="player-loading-copy">
+        <span id="player-loading-caption" class="player-loading-caption">Conectando ao sinal</span>
+        <span id="player-loading-text">Mexendo na antena…</span>
+      </div>
     </div>
 
     <!-- Erro de sinal -->
@@ -526,22 +538,55 @@
     <div id="player-osd" class="player-osd">
       <div class="osd-top-bar">
         <div class="osd-top-left">
-          <button id="btn-osd-back" type="button" class="osd-back-btn" data-focusable="true" title="Voltar ao catálogo">
-            <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M12.2 4.5L6.8 10l5.4 5.5" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+          <button id="btn-osd-top-exit" type="button" class="osd-btn osd-icon-button" data-focusable="true" title="Encerrar reprodução" aria-label="Encerrar reprodução">
+            <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+          </button>
+          <button id="btn-osd-back" type="button" class="osd-btn osd-back-btn" data-focusable="true" title="Voltar ao catálogo">
+            <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="11" rx="2" stroke="currentColor" stroke-width="1.5" /><rect x="10" y="9" width="8" height="6" rx="1.5" fill="currentColor" stroke="#262628" /></svg>
             <span id="osd-back-label">Voltar</span>
           </button>
+        </div>
+        <div class="osd-top-right">
           <span id="osd-live-badge" class="osd-live-badge"><span class="live-pulse-dot"></span>AO VIVO</span>
           <span id="osd-category-pill" class="osd-meta-pill">TV ao Vivo</span>
           <span id="osd-res-badge" class="osd-res-badge hidden">4K</span>
         </div>
-        <div class="osd-top-right">
-          <span class="osd-back-hint"><kbd>ESC</kbd> / <kbd>VOLTAR</kbd> limpa a tela • 2x Mini Player</span>
-        </div>
       </div>
 
-      <!-- Gaveta Rápida de Canais + EPG -->
+      <div class="osd-transport-controls" role="group" aria-label="Controles de reprodução">
+        <button id="btn-osd-prev-ch" type="button" aria-label="Canal anterior" class="osd-transport-btn osd-btn" data-focusable="true" title="Canal Anterior">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M4.2 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zm3.1 5.5c0-.46.25-.88.65-1.1l6.6-3.8c.8-.46 1.8.12 1.8 1.04v7.72c0 .92-1 1.5-1.8 1.04l-6.6-3.8A1.26 1.26 0 0 1 7.3 10z" />
+          </svg>
+          <span class="sr-only">Anterior</span>
+        </button>
+        <button id="btn-osd-rw" type="button" aria-label="Voltar 15 segundos" class="osd-transport-btn osd-btn hidden" data-focusable="true" title="Voltar 15s">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4.5 9.8A5.8 5.8 0 1 0 6.4 5.5L4.4 7.2M4.4 4v3.2h3.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+          </svg><span class="osd-skip-amount" aria-hidden="true">15</span>
+          <span class="sr-only">-15s</span>
+        </button>
+        <button id="btn-osd-playpause" type="button" aria-label="Reproduzir ou pausar" class="osd-transport-btn osd-btn osd-btn-primary" data-focusable="true">
+          <svg id="osd-playpause-icon" class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <rect x="5.2" y="4.2" width="3.4" height="11.6" rx="1.1" />
+            <rect x="11.4" y="4.2" width="3.4" height="11.6" rx="1.1" />
+          </svg>
+          <span id="osd-playpause-label" class="sr-only">Pausar</span>
+        </button>
+        <button id="btn-osd-ff" type="button" aria-label="Avançar 15 segundos" class="osd-transport-btn osd-btn hidden" data-focusable="true" title="Avançar 15s">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M15.5 9.8a5.8 5.8 0 1 1-1.9-4.3l2 1.7M15.6 4v3.2h-3.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+          </svg><span class="osd-skip-amount" aria-hidden="true">15</span>
+          <span class="sr-only">+15s</span>
+        </button>
+        <button id="btn-osd-next-ch" type="button" aria-label="Próximo canal" class="osd-transport-btn osd-btn" data-focusable="true" title="Próximo Canal">
+          <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <path d="M14 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zM12.7 10c0 .46-.25.88-.65 1.1l-6.6 3.8c-.8.46-1.8-.12-1.8-1.04V6.14c0-.92 1-1.5 1.8-1.04l6.6 3.8c.4.22.65.64.65 1.1z" />
+          </svg>
+          <span class="sr-only">Próximo</span>
+        </button>
+      </div>
+
       <div id="osd-channel-drawer" class="osd-channel-drawer hidden">
         <div class="osd-drawer-header">
           <strong>Canais</strong>
@@ -550,15 +595,49 @@
         <div id="osd-drawer-list" class="osd-drawer-list"></div>
       </div>
 
-      <!-- Painel Inferior Flutuante + Popover de Faixas (Áudio / Legendas / Resolução) -->
+
       <div class="osd-bottom-wrap">
-        <div id="osd-tracks-popover" class="osd-tracks-popover hidden">
+        <div id="osd-tracks-popover" class="osd-tracks-popover hidden" role="dialog" aria-modal="true" aria-labelledby="osd-popover-title">
           <div class="osd-popover-header">
-            <strong id="osd-popover-title">Opções</strong>
+            <strong id="osd-popover-title">Opções de reprodução</strong>
             <button id="btn-osd-popover-close" type="button" class="osd-popover-close" data-focusable="true" aria-label="Fechar menu">
+              <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5.8 5.8l8.4 8.4M14.2 5.8l-8.4 8.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+            </button>
+          </div>
+          <div id="osd-options-list" class="osd-options-list hidden">
+            <button id="btn-osd-quality" type="button" class="osd-popover-item osd-option-row osd-btn hidden" data-focusable="true" title="Resolução de Vídeo">
               <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M5.8 5.8l8.4 8.4M14.2 5.8l-8.4 8.4" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+                <rect x="2.5" y="4.2" width="15" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.65" />
+                <path d="M6.4 12V8l-1.9 2.7h2.6M11 8v4M11 10.2l2.4-2.2M11.8 9.5l1.9 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
+              <span class="osd-option-copy"><span>Qualidade</span><small id="osd-quality-label">Automática</small></span>
+            </button>
+            <button id="btn-osd-audio" type="button" class="osd-popover-item osd-option-row osd-btn hidden" data-focusable="true" title="Faixas de Áudio">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M4.2 8.2h2.4l3.5-3v9.6l-3.5-3H4.2a1 1 0 0 1-1-1V9.2a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" />
+                <path d="M13.2 7.5a3.5 3.5 0 0 1 0 5M15.4 5.3a6.5 6.5 0 0 1 0 9.4" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Áudio</span><small id="osd-audio-label">Faixa de áudio</small></span>
+            </button>
+            <button id="btn-osd-subs" type="button" class="osd-popover-item osd-option-row osd-btn hidden" data-focusable="true" title="Legendas">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="2.5" y="4" width="15" height="11.5" rx="2.6" stroke="currentColor" stroke-width="1.65" />
+                <path d="M6 9h3.5M11.2 9H14M6 12h2.2M9.8 12H14" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Legendas</span><small id="osd-subs-label">Desativadas</small></span>
+            </button>
+            <button id="btn-osd-aspect" type="button" class="osd-popover-item osd-option-row osd-btn" data-focusable="true">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="2.8" y="4.2" width="14.4" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.7" />
+                <path d="M6.2 7.4h2.5M6.2 7.4v2.5M13.8 12.6h-2.5M13.8 12.6v-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+              </svg>
+              <span class="osd-option-copy"><span>Formato da imagem</span><small id="osd-aspect-label">Padrão</small></span>
+            </button>
+            <button id="btn-osd-hide" type="button" class="osd-popover-item osd-option-row osd-btn" data-focusable="true">
+              <span>Tela Limpa</span>
+            </button>
+            <button id="btn-osd-close" type="button" class="osd-popover-item osd-option-row osd-btn osd-btn-close" data-focusable="true">
+              <span>Encerrar</span>
             </button>
           </div>
           <div id="osd-popover-list" class="osd-popover-list"></div>
@@ -571,112 +650,34 @@
               <h2 id="osd-title">Reproduzindo</h2>
               <p id="osd-subtitle">Alta Definição</p>
             </div>
-            <div id="osd-time-display" class="osd-time-display hidden">
-              <span id="osd-time-current">00:00</span>
-              <span class="osd-time-sep">/</span>
-              <span id="osd-time-total">00:00</span>
-            </div>
+            <button id="btn-osd-more" type="button" class="osd-btn osd-icon-button" data-focusable="true" title="Opções de reprodução" aria-label="Opções de reprodução" aria-haspopup="dialog" aria-expanded="false">
+              <svg class="icon-svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.9" /><circle cx="12" cy="12" r="1.9" /><circle cx="19" cy="12" r="1.9" /></svg>
+            </button>
           </div>
-
-          <!-- Barra de Progresso Interativa -->
-          <div id="osd-progress-wrap" class="osd-progress-wrap hidden" data-focusable="true" tabindex="0">
-            <div class="osd-progress-track">
-              <div id="osd-progress-fill" class="osd-progress-fill"></div>
+          <div id="osd-time-display" class="osd-time-display hidden">
+            <span id="osd-time-current">00:00</span>
+            <div id="osd-progress-wrap" class="osd-progress-wrap hidden" data-focusable="true" tabindex="0" role="slider" aria-label="Posição da reprodução" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0">
+              <div class="osd-progress-track"><div id="osd-progress-fill" class="osd-progress-fill"></div></div>
             </div>
+            <span id="osd-time-total">--:--</span>
           </div>
-
-          <!-- Controles Monocromáticos Estilo SF Symbols -->
           <div class="osd-controls-row">
-            <button id="btn-osd-prev-ch" type="button" class="osd-btn" data-focusable="true" title="Canal Anterior">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M4.2 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zm3.1 5.5c0-.46.25-.88.65-1.1l6.6-3.8c.8-.46 1.8.12 1.8 1.04v7.72c0 .92-1 1.5-1.8 1.04l-6.6-3.8A1.26 1.26 0 0 1 7.3 10z" />
-              </svg>
-              <span>Anterior</span>
+            <button id="btn-osd-channels" type="button" class="osd-btn hidden" data-focusable="true" aria-expanded="false" aria-controls="osd-channel-drawer">
+              <svg class="icon-svg" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg><span>Canais</span>
             </button>
-
-            <button id="btn-osd-rw" type="button" class="osd-btn hidden" data-focusable="true" title="Voltar 15s">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M4.5 9.8A5.8 5.8 0 1 0 6.4 5.5L4.4 7.2M4.4 4v3.2h3.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <span>-15s</span>
-            </button>
-
-            <button id="btn-osd-playpause" type="button" class="osd-btn osd-btn-primary" data-focusable="true">
-              <svg id="osd-playpause-icon" class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <rect x="5.2" y="4.2" width="3.4" height="11.6" rx="1.1" />
-                <rect x="11.4" y="4.2" width="3.4" height="11.6" rx="1.1" />
-              </svg>
-              <span id="osd-playpause-label">Pausar</span>
-            </button>
-
-            <button id="btn-osd-ff" type="button" class="osd-btn hidden" data-focusable="true" title="Avançar 15s">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M15.5 9.8a5.8 5.8 0 1 1-1.9-4.3l2 1.7M15.6 4v3.2h-3.2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <span>+15s</span>
-            </button>
-
-            <button id="btn-osd-next-ch" type="button" class="osd-btn" data-focusable="true" title="Próximo Canal">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M14 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zM12.7 10c0 .46-.25.88-.65 1.1l-6.6 3.8c-.8.46-1.8-.12-1.8-1.04V6.14c0-.92 1-1.5 1.8-1.04l6.6 3.8c.4.22.65.64.65 1.1z" />
-              </svg>
-              <span>Próximo</span>
-            </button>
-
-            <button id="btn-osd-next-ep" type="button" class="osd-btn hidden" data-focusable="true">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                <path d="M14 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zM12.7 10c0 .46-.25.88-.65 1.1l-6.6 3.8c-.8.46-1.8-.12-1.8-1.04V6.14c0-.92 1-1.5 1.8-1.04l6.6 3.8c.4.22.65.64.65 1.1z" />
-              </svg>
-              <span>Próx. Episódio</span>
-            </button>
-
-            <!-- Opções Gerais: Resolução, Áudio e Legendas -->
-            <button id="btn-osd-quality" type="button" class="osd-btn hidden" data-focusable="true" title="Resolução de Vídeo">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <rect x="2.5" y="4.2" width="15" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.65" />
-                <path d="M6.4 12V8l-1.9 2.7h2.6M11 8v4M11 10.2l2.4-2.2M11.8 9.5l1.9 2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <span id="osd-quality-label">Resolução</span>
-            </button>
-
-            <button id="btn-osd-audio" type="button" class="osd-btn hidden" data-focusable="true" title="Faixas de Áudio">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <path d="M4.2 8.2h2.4l3.5-3v9.6l-3.5-3H4.2a1 1 0 0 1-1-1V9.2a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" />
-                <path d="M13.2 7.5a3.5 3.5 0 0 1 0 5M15.4 5.3a6.5 6.5 0 0 1 0 9.4" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" />
-              </svg>
-              <span id="osd-audio-label">Áudio</span>
-            </button>
-
-            <button id="btn-osd-subs" type="button" class="osd-btn hidden" data-focusable="true" title="Legendas">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <rect x="2.5" y="4" width="15" height="11.5" rx="2.6" stroke="currentColor" stroke-width="1.65" />
-                <path d="M6 9h3.5M11.2 9H14M6 12h2.2M9.8 12H14" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" />
-              </svg>
-              <span id="osd-subs-label">Legendas</span>
-            </button>
-
             <button id="btn-osd-fav" type="button" class="osd-btn" data-focusable="true">
               <svg class="icon-svg icon-sm icon-star" viewBox="0 0 20 20" fill="none" aria-hidden="true">
                 <path d="M10 2.8l2.22 4.5 4.97.72-3.6 3.5.85 4.95L10 14.14l-4.44 2.33.85-4.95-3.6-3.5 4.97-.72L10 2.8z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round" />
               </svg>
               <span id="osd-fav-label">Favoritar</span>
             </button>
-
-            <button id="btn-osd-aspect" type="button" class="osd-btn" data-focusable="true">
-              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-                <rect x="2.8" y="4.2" width="14.4" height="11.6" rx="2.4" stroke="currentColor" stroke-width="1.7" />
-                <path d="M6.2 7.4h2.5M6.2 7.4v2.5M13.8 12.6h-2.5M13.8 12.6v-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            <button id="btn-osd-next-ep" type="button" class="osd-btn hidden" data-focusable="true">
+              <svg class="icon-svg icon-sm" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path d="M14 4.5a.9.9 0 0 1 1.8 0v11a.9.9 0 0 1-1.8 0v-11zM12.7 10c0 .46-.25.88-.65 1.1l-6.6 3.8c-.8.46-1.8-.12-1.8-1.04V6.14c0-.92 1-1.5 1.8-1.04l6.6 3.8c.4.22.65.64.65 1.1z" />
               </svg>
-              <span id="osd-aspect-label">Padrão</span>
+              <span>Próx. Episódio</span>
             </button>
-
-            <button id="btn-osd-hide" type="button" class="osd-btn" data-focusable="true">
-              <span>Tela Limpa</span>
-            </button>
-
-            <button id="btn-osd-close" type="button" class="osd-btn osd-btn-close" data-focusable="true">
-              <span>Encerrar</span>
-            </button>
+            <span class="osd-clean-hint">Os controles desaparecem durante a reprodução</span>
           </div>
         </div>
       </div>
@@ -684,5 +685,6 @@
   </div>
 
   <script src="./app.js"></script>
+  <script src="./carousels.js"></script>
 </body>
 </html>

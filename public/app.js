@@ -13,6 +13,45 @@
 
   const PAGE_SIZE = 36;
   const OSD_AUTOHIDE_MS = 4500;
+  const LOADING_MESSAGES = [
+    'Mexendo na antena…',
+    'Limpando a tela…',
+    'Colocando Bombril na antena…'
+  ];
+  const LOADING_MESSAGE_MS = 3000;
+
+  // Touch Drag Tracking (prevents accidental card click while scrolling on touch devices)
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let isTouchDragging = false;
+
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches[0]) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isTouchDragging = false;
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches[0]) {
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      if (dx > 8 || dy > 8) {
+        isTouchDragging = true;
+      }
+    }
+  }, { passive: true });
+
+  // A new input mode must work after a touch scroll. Pointer events distinguish
+  // real mouse input from compatibility mouse clicks emitted by a touch gesture.
+  window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse') isTouchDragging = false;
+  }, { passive: true });
+
+  window.addEventListener('keydown', () => {
+    isTouchDragging = false;
+  }, { capture: true });
 
   const state = {
     loginMode: 'xtream', // 'xtream' | 'core' | 'm3u'
@@ -78,9 +117,13 @@
       episodeList: [],
       episodeIndex: -1,
       isPlaying: false,
+      isLoading: false,
+      loadingTimer: null,
+      loadingMessageIndex: 0,
+      requestId: 0,
       aspectMode: 'contain',
       hls: null,
-      activePopover: null, // 'quality' | 'audio' | 'subs' | null
+      activePopover: null, // 'options' | 'quality' | 'audio' | 'subs' | null
       popoverTrigger: null,
       customSubBlobUrls: [],
       pendingResumeTime: 0,
@@ -101,6 +144,10 @@
     clockDisplay: document.getElementById('clock-display'),
 
     // Hero
+    homeGreeting: document.getElementById('home-greeting'),
+    heroBanner: document.getElementById('hero-banner'),
+    heroArtwork: document.querySelector('.hero-artwork'),
+    heroPosterImg: document.getElementById('hero-poster-img'),
     heroBackdropImg: document.getElementById('hero-backdrop-img'),
     heroBadgeType: document.getElementById('hero-badge-type'),
     heroBadgeMeta: document.getElementById('hero-badge-meta'),
@@ -194,6 +241,7 @@
     btnMiniPipClose: document.getElementById('btn-mini-pip-close'),
     playerSpinner: document.getElementById('player-Spinner'),
     playerLoadingText: document.getElementById('player-loading-text'),
+    playerLoadingCaption: document.getElementById('player-loading-caption'),
     playerErrorBox: document.getElementById('player-error-box'),
     playerErrorTitle: document.getElementById('player-error-title'),
     playerErrorDesc: document.getElementById('player-error-desc'),
@@ -202,6 +250,7 @@
 
     playerOsd: document.getElementById('player-osd'),
     btnOsdBack: document.getElementById('btn-osd-back'),
+    btnOsdTopExit: document.getElementById('btn-osd-top-exit'),
     osdBackLabel: document.getElementById('osd-back-label'),
     osdLiveBadge: document.getElementById('osd-live-badge'),
     osdCategoryPill: document.getElementById('osd-category-pill'),
@@ -213,6 +262,9 @@
     osdPopoverTitle: document.getElementById('osd-popover-title'),
     btnOsdPopoverClose: document.getElementById('btn-osd-popover-close'),
     osdPopoverList: document.getElementById('osd-popover-list'),
+    osdOptionsList: document.getElementById('osd-options-list'),
+    btnOsdMore: document.getElementById('btn-osd-more'),
+    btnOsdChannels: document.getElementById('btn-osd-channels'),
     osdLogo: document.getElementById('osd-logo'),
     osdTitle: document.getElementById('osd-title'),
     osdSubtitle: document.getElementById('osd-subtitle'),
@@ -324,6 +376,8 @@
 
   function updateClock() {
     const now = new Date();
+    const hour = now.getHours();
+    dom.homeGreeting.textContent = hour < 12 ? 'Bom dia.' : hour < 18 ? 'Boa tarde.' : 'Boa noite.';
     dom.clockDisplay.textContent = now.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit'
@@ -762,7 +816,10 @@
       btn.dataset.focusable = 'true';
       btn.dataset.catId = cat.category_id;
       btn.textContent = cat.category_name.replace(/^(Canais|Filmes|Series|Séries)\s*\|\s*/i, '');
-      btn.addEventListener('click', () => selectCategory(section, cat.category_id, true));
+      btn.addEventListener('click', () => {
+        if (isTouchDragging) return;
+        selectCategory(section, cat.category_id, true);
+      });
       frag.appendChild(btn);
     });
 
@@ -911,6 +968,7 @@
     });
 
     btn.addEventListener('click', () => {
+      if (isTouchDragging) return;
       startPlayback({
         type: 'live',
         item: channel,
@@ -984,6 +1042,7 @@
     btn.appendChild(caption);
 
     btn.addEventListener('click', () => {
+      if (isTouchDragging) return;
       openDetailsModal(item, type, btn);
     });
 
@@ -1055,63 +1114,84 @@
         item: heroCandidate,
         type: movies[0] ? 'movie' : series[0] ? 'series' : 'live'
       };
-      const cover =
-        (Array.isArray(heroCandidate.backdrop_path) && heroCandidate.backdrop_path[0]) ||
-        heroCandidate.stream_icon ||
-        heroCandidate.cover ||
-        '';
-      if (cover) {
-        dom.heroBackdropImg.src = cover;
-      }
+      const backdrop = Array.isArray(heroCandidate.backdrop_path)
+        ? heroCandidate.backdrop_path[0] : heroCandidate.backdrop_path;
+      const cover = heroCandidate.stream_icon || heroCandidate.cover || backdrop || '';
+      dom.heroBanner.classList.toggle('has-backdrop', Boolean(backdrop));
+      dom.heroBackdropImg.src = backdrop || '';
+      dom.heroPosterImg.src = cover;
+      dom.heroArtwork.classList.toggle('hidden', !cover);
+      dom.heroPosterImg.onerror = () => dom.heroArtwork.classList.add('hidden');
       dom.heroBadgeType.textContent = state.heroItem.type === 'movie' ? 'Destaque • Filme' : 'Destaque • KS TV';
       const heroIs4k = isItem4K(heroCandidate, state.heroItem.type);
       dom.heroBadgeMeta.className = heroIs4k ? 'badge-4k' : 'badge-outline';
       dom.heroBadgeMeta.textContent = heroIs4k
-        ? (heroCandidate.year ? `${heroCandidate.year} • 4K UHD` : '4K UHD • HDR')
+        ? (heroCandidate.year ? `${heroCandidate.year} • 4K UHD` : '4K UHD')
         : (heroCandidate.year ? `${heroCandidate.year} • HD` : 'Alta Definição');
       dom.heroTitle.textContent = heroCandidate.name || heroCandidate.title || 'Destaque KS TV-Stream';
       dom.heroDesc.textContent =
         heroCandidate.plot ||
-        'Assista agora com reprodução limpa em tela cheia. No player, pressione VOLTAR uma vez para ocultar os controles.';
+        (state.heroItem.type === 'live'
+          ? 'Sua programação já está rolando. Escolha um canal e fique à vontade.'
+          : state.heroItem.type === 'series'
+            ? 'Que tal uma nova história? Escolha seu episódio e comece a maratona.'
+            : 'Que tal começar por este filme? Escolha seu lugar no sofá e dê o play.');
     }
 
     dom.homeRows.innerHTML = '';
 
-    if (state.recent.length > 0) {
-      appendHomeShelf('Continuar Assistindo', state.recent.slice(0, 12), 'mixed');
-    }
+    const recentMedia = state.recent.filter(item => item._savedType && item._savedType !== 'live');
+    const recentChannels = state.recent.filter(item => !item._savedType || item._savedType === 'live');
+    if (recentMedia.length > 0) appendHomeShelf('Seus últimos plays', recentMedia.slice(0, 12), 'mixed', 'Um atalho para as histórias que você abriu por aqui.', 'recent-media');
+    if (recentChannels.length > 0) appendHomeShelf('Seus canais recentes', recentChannels.slice(0, 12), 'live', 'Volte rapidinho para sua programação.', 'recent-live');
     if (channels.length > 0) {
-      appendHomeShelf('TV ao Vivo — Destaques de Hoje', channels.slice(0, 14), 'live');
+      appendHomeShelf('TV ao Vivo — Destaques de Hoje', channels.slice(0, 14), 'live', 'Acontecendo agora, a um play de distância.');
     }
     if (movies.length > 0) {
-      appendHomeShelf('Filmes Mais Assistidos', movies.slice(0, 14), 'movie');
+      appendHomeShelf('Filmes Mais Assistidos', movies.slice(0, 14), 'movie', 'Um bom filme combina com o seu tempo livre.');
     }
     if (series.length > 0) {
-      appendHomeShelf('Séries em Alta', series.slice(0, 14), 'series');
+      appendHomeShelf('Séries em Alta', series.slice(0, 14), 'series', 'Só mais um episódio? A gente entende.');
     }
   }
 
-  function appendHomeShelf(title, items, shelfType) {
+  function appendHomeShelf(title, items, shelfType, subtitle = '', layout = '') {
     const row = document.createElement('div');
     row.className = 'home-row';
+    row.dataset.shelfType = layout || shelfType;
+
+    const header = document.createElement('div');
+    header.className = 'home-row-header';
 
     const heading = document.createElement('h3');
     heading.className = 'home-row-title';
     heading.textContent = title;
+    header.appendChild(heading);
+    if (subtitle) {
+      const description = document.createElement('p');
+      description.className = 'home-row-subtitle';
+      description.textContent = subtitle;
+      header.appendChild(description);
+    }
 
     const track = document.createElement('div');
     track.className = 'home-row-track';
+    track.setAttribute('aria-label', title);
 
     items.forEach((entry, idx) => {
       const actualType = shelfType === 'mixed' ? entry._savedType || 'live' : shelfType;
       if (actualType === 'live') {
         track.appendChild(createChannelCard(entry, idx, items));
       } else {
-        track.appendChild(createPosterCard(entry, actualType));
+        const card = createPosterCard(entry, actualType);
+        if (layout === 'recent-media') {
+          card.querySelector('.poster-sub').textContent = `${actualType === 'series' ? 'Série' : 'Filme'}${entry.year ? ` • ${entry.year}` : ''}`;
+        }
+        track.appendChild(card);
       }
     });
 
-    row.appendChild(heading);
+    row.appendChild(header);
     row.appendChild(track);
     dom.homeRows.appendChild(row);
   }
@@ -1284,6 +1364,9 @@
      5. VIDEO PLAYER, LIVE CHANNEL DRAWER & MINI PLAYER (PiP)
      ======================================================================== */
   async function startPlayback({ type, item, channelList = [], channelIndex = -1, episodeList = [], episodeIndex = -1, triggerElement = null }) {
+    const requestId = ++state.player.requestId;
+    hidePlayerLoading();
+    state.player.isPlaying = false;
     if (triggerElement) {
       state.player.previousFocus = triggerElement;
     }
@@ -1343,8 +1426,7 @@
     closeTracksPopover(false);
     dom.playerOverlay.classList.remove('hidden', 'mini-pip-mode', 'cursor-idle');
     dom.playerErrorBox.classList.add('hidden');
-    dom.playerSpinner.classList.remove('hidden');
-    dom.playerLoadingText.textContent = 'Conectando ao sinal...';
+    showPlayerLoading();
 
     dom.osdLiveBadge.classList.toggle('hidden', !isLive);
     dom.osdCategoryPill.textContent =
@@ -1371,6 +1453,13 @@
 
     dom.osdTitle.textContent = titleText;
     dom.osdSubtitle.textContent = subtitleText;
+    dom.osdBackLabel.textContent = isLive ? 'Mini Player' : 'Voltar';
+    dom.btnOsdBack.title = isLive ? 'Continuar no Mini Player' : 'Voltar ao catálogo';
+    dom.osdTimeCurrent.textContent = '00:00';
+    dom.osdTimeTotal.textContent = '--:--';
+    dom.osdProgressFill.style.width = '0%';
+    dom.osdProgressWrap.setAttribute('aria-valuemax', '0');
+    dom.osdProgressWrap.setAttribute('aria-valuenow', '0');
 
     dom.btnOsdPrevCh.classList.toggle('hidden', !isLive);
     dom.btnOsdNextCh.classList.toggle('hidden', !isLive);
@@ -1383,12 +1472,9 @@
       !(type === 'series' && episodeIndex >= 0 && episodeIndex + 1 < episodeList.length)
     );
 
-    if (isLive) {
-      renderWebChannelDrawer();
-      dom.osdChannelDrawer.classList.remove('hidden');
-    } else {
-      dom.osdChannelDrawer.classList.add('hidden');
-    }
+    dom.btnOsdChannels.classList.toggle('hidden', !isLive);
+    setChannelDrawerVisible(false);
+    if (isLive) renderWebChannelDrawer();
 
     updateOsdFavButton();
     showPlayerOsd(true);
@@ -1397,6 +1483,8 @@
     stopMediaEngines();
 
     const finalUrl = await resolveStreamRedirect(rawUrl);
+    // A connection may resolve after the user closes or chooses another stream.
+    if (requestId !== state.player.requestId || (!state.player.active && !state.player.miniPipActive)) return;
     const video = dom.videoElement;
     const isHlsUrl = isLive || /\.m3u8(\?|$)/i.test(finalUrl);
 
@@ -1559,7 +1647,7 @@
     dom.playerOsd.classList.remove('osd-hidden');
 
     if (focusPrimary) {
-      if (state.player.type === 'live' && dom.osdDrawerList) {
+      if (state.player.type === 'live' && !dom.osdChannelDrawer.classList.contains('hidden')) {
         const activeChBtn = dom.osdDrawerList.querySelector('.osd-drawer-item.active') || dom.osdDrawerList.querySelector('.osd-drawer-item');
         if (activeChBtn) {
           setTvFocus(activeChBtn);
@@ -1575,6 +1663,7 @@
 
   function hidePlayerOsd() {
     closeTracksPopover(false);
+    setChannelDrawerVisible(false);
     state.player.osdVisible = false;
     dom.playerOsd.classList.add('osd-hidden');
     if (state.player.active) {
@@ -1590,16 +1679,23 @@
     if (state.player.osdTimer) {
       clearTimeout(state.player.osdTimer);
     }
-    if (state.player.activePopover) return;
+    if (state.player.activePopover || state.player.isLoading) return;
 
     state.player.osdTimer = setTimeout(() => {
-      if (state.player.active && state.player.isPlaying && !state.player.activePopover) {
+      if (state.player.active && state.player.isPlaying && !state.player.isLoading && !state.player.activePopover) {
         hidePlayerOsd();
       }
     }, OSD_AUTOHIDE_MS);
   }
 
+  function setChannelDrawerVisible(visible) {
+    dom.osdChannelDrawer.classList.toggle('hidden', !visible);
+    dom.playerOsd.classList.toggle('channel-drawer-open', visible);
+    dom.btnOsdChannels.setAttribute('aria-expanded', String(visible));
+  }
+
   function enterWebMiniPipMode() {
+    hidePlayerLoading();
     closeTracksPopover(false);
     hidePlayerOsd();
     state.player.active = false;
@@ -1627,10 +1723,15 @@
     state.player.active = true;
     dom.pipControlsBox.classList.add('hidden');
     dom.playerOverlay.classList.remove('mini-pip-mode', 'cursor-idle');
+    if (dom.videoElement.readyState < 3 && dom.playerErrorBox.classList.contains('hidden')) {
+      showPlayerLoading('Ajustando o sinal');
+    }
     showPlayerOsd(true);
   }
 
   function closePlayer() {
+    ++state.player.requestId;
+    hidePlayerLoading();
     closeTracksPopover(false);
     hidePlayerOsd();
     stopMediaEngines();
@@ -1639,7 +1740,6 @@
     dom.pipControlsBox.classList.add('hidden');
     dom.playerOverlay.classList.add('hidden');
     dom.playerOverlay.classList.remove('mini-pip-mode', 'cursor-idle');
-    dom.playerSpinner.classList.add('hidden');
     dom.playerErrorBox.classList.add('hidden');
 
     if (state.player.previousFocus && document.body.contains(state.player.previousFocus)) {
@@ -1719,6 +1819,7 @@
 
   function updatePlayPauseLabel(isPlaying) {
     dom.osdPlayPauseLabel.textContent = isPlaying ? 'Pausar' : 'Reproduzir';
+    dom.btnOsdPlayPause.setAttribute('aria-label', isPlaying ? 'Pausar' : 'Reproduzir');
     if (dom.osdPlayPauseIcon) {
       dom.osdPlayPauseIcon.innerHTML = isPlaying
         ? '<rect x="5.2" y="4.2" width="3.4" height="11.6" rx="1.1" /><rect x="11.4" y="4.2" width="3.4" height="11.6" rx="1.1" />'
@@ -1727,10 +1828,35 @@
   }
 
   function showPlayerError(msg) {
-    dom.playerSpinner.classList.add('hidden');
+    hidePlayerLoading();
     dom.playerErrorDesc.textContent = msg;
     dom.playerErrorBox.classList.remove('hidden');
     setTvFocus(dom.btnPlayerRetry);
+  }
+
+  function showPlayerLoading(caption = 'Conectando ao sinal') {
+    if (!state.player.active || state.player.miniPipActive || !dom.playerErrorBox.classList.contains('hidden')) return;
+    dom.playerLoadingCaption.textContent = caption;
+    dom.playerSpinner.classList.remove('hidden');
+    dom.playerOverlay.classList.add('is-loading');
+    if (state.player.isLoading) return;
+    state.player.isLoading = true;
+    state.player.loadingMessageIndex = 0;
+    dom.playerLoadingText.textContent = LOADING_MESSAGES[0];
+    showPlayerOsd(false);
+    if (state.player.osdTimer) clearTimeout(state.player.osdTimer);
+    state.player.loadingTimer = setInterval(() => {
+      state.player.loadingMessageIndex = (state.player.loadingMessageIndex + 1) % LOADING_MESSAGES.length;
+      dom.playerLoadingText.textContent = LOADING_MESSAGES[state.player.loadingMessageIndex];
+    }, LOADING_MESSAGE_MS);
+  }
+
+  function hidePlayerLoading() {
+    if (state.player.loadingTimer) clearInterval(state.player.loadingTimer);
+    state.player.loadingTimer = null;
+    state.player.isLoading = false;
+    dom.playerSpinner.classList.add('hidden');
+    dom.playerOverlay.classList.remove('is-loading');
   }
 
   /* --- Sibling Stream Finders (Quality & Audio versions) --- */
@@ -1897,11 +2023,20 @@
 
   /* --- Apple TV Glass Popover for Resolution, Audio & Subtitles --- */
   function openTracksPopover(kind, triggerBtn) {
+    setChannelDrawerVisible(false);
     state.player.activePopover = kind;
-    state.player.popoverTrigger = triggerBtn;
+    state.player.popoverTrigger = dom.btnOsdMore;
+    dom.btnOsdMore.setAttribute('aria-expanded', 'true');
+    dom.osdOptionsList.classList.toggle('hidden', kind !== 'options');
+    dom.osdPopoverList.classList.toggle('hidden', kind === 'options');
+    if (state.player.osdTimer) clearTimeout(state.player.osdTimer);
 
     dom.osdPopoverList.innerHTML = '';
     const frag = document.createDocumentFragment();
+
+    if (kind === 'options') {
+      dom.osdPopoverTitle.textContent = 'Opções de reprodução';
+    }
 
     if (kind === 'quality') {
       dom.osdPopoverTitle.textContent = 'Qualidade de Vídeo';
@@ -1967,7 +2102,7 @@
                 channelIndex: state.player.channelList.indexOf(s),
                 episodeList: state.player.episodeList,
                 episodeIndex: state.player.episodeIndex,
-                triggerElement: triggerBtn
+                triggerElement: state.player.previousFocus
               });
             }
           });
@@ -2052,7 +2187,7 @@
                 channelIndex: state.player.channelList.indexOf(s),
                 episodeList: state.player.episodeList,
                 episodeIndex: state.player.episodeIndex,
-                triggerElement: triggerBtn
+                triggerElement: state.player.previousFocus
               });
             }
           });
@@ -2125,7 +2260,9 @@
     dom.osdPopoverList.appendChild(frag);
     dom.osdTracksPopover.classList.remove('hidden');
 
-    const activeItem = dom.osdPopoverList.querySelector('.osd-popover-item.active') || dom.osdPopoverList.querySelector('.osd-popover-item');
+    const activeItem = kind === 'options'
+      ? dom.osdOptionsList.querySelector('.osd-option-row:not(.hidden)')
+      : dom.osdPopoverList.querySelector('.osd-popover-item.active') || dom.osdPopoverList.querySelector('.osd-popover-item');
     if (activeItem) {
       setTvFocus(activeItem);
     }
@@ -2134,6 +2271,7 @@
   function closeTracksPopover(restoreFocus = true) {
     if (!state.player.activePopover) return;
     state.player.activePopover = null;
+    dom.btnOsdMore.setAttribute('aria-expanded', 'false');
     dom.osdTracksPopover.classList.add('hidden');
     dom.osdPopoverList.innerHTML = '';
     if (restoreFocus && state.player.popoverTrigger && document.body.contains(state.player.popoverTrigger)) {
@@ -2211,19 +2349,28 @@
 
     v.addEventListener('playing', () => {
       state.player.isPlaying = true;
-      dom.playerSpinner.classList.add('hidden');
+      hidePlayerLoading();
       dom.playerErrorBox.classList.add('hidden');
       updatePlayPauseLabel(true);
       refreshPlayerTrackControls();
+      resetOsdAutoHideTimer();
     });
+
+    v.addEventListener('canplay', () => {
+      if (v.readyState >= 3) hidePlayerLoading();
+    });
+
+    v.addEventListener('ended', hidePlayerLoading);
+    window.addEventListener('pagehide', hidePlayerLoading);
 
     v.addEventListener('pause', () => {
       state.player.isPlaying = false;
       updatePlayPauseLabel(false);
+      if (state.player.active) showPlayerOsd(false);
     });
 
     v.addEventListener('waiting', () => {
-      if (state.player.active) dom.playerSpinner.classList.remove('hidden');
+      showPlayerLoading('Ajustando o sinal');
     });
 
     v.addEventListener('timeupdate', () => {
@@ -2231,7 +2378,11 @@
       const cur = v.currentTime || 0;
       const dur = v.duration || 0;
       dom.osdTimeCurrent.textContent = formatTime(cur);
-      dom.osdTimeTotal.textContent = dur > 0 ? formatTime(dur) : '--:--';
+      dom.osdTimeTotal.textContent = dur > 0 ? `−${formatTime(Math.max(0, dur - cur))}` : '--:--';
+      dom.osdTimeTotal.title = dur > 0 ? `Duração total: ${formatTime(dur)}` : '';
+      dom.osdProgressWrap.setAttribute('aria-valuemax', String(Math.floor(dur) || 0));
+      dom.osdProgressWrap.setAttribute('aria-valuenow', String(Math.floor(cur)));
+      dom.osdProgressWrap.setAttribute('aria-valuetext', `${formatTime(cur)} de ${formatTime(dur)}`);
       const pct = dur > 0 ? Math.min(100, (cur / dur) * 100) : 0;
       dom.osdProgressFill.style.width = `${pct}%`;
     });
@@ -2242,7 +2393,7 @@
     });
 
     dom.osdProgressWrap.addEventListener('click', (e) => {
-      if (state.player.type === 'live') return;
+      if (state.player.type === 'live' || e.detail === 0) return;
       const rect = dom.osdProgressWrap.getBoundingClientRect();
       const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       if (Number.isFinite(v.duration)) {
@@ -2314,7 +2465,25 @@
       closePlayer();
     });
 
-    // Bottom Track Popover Triggers
+    dom.btnOsdMore.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (state.player.activePopover) closeTracksPopover(true);
+      else openTracksPopover('options', dom.btnOsdMore);
+    });
+
+    dom.btnOsdChannels.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTracksPopover(false);
+      const visible = dom.osdChannelDrawer.classList.contains('hidden');
+      setChannelDrawerVisible(visible);
+      if (visible) {
+        const channel = dom.osdDrawerList.querySelector('.active') || dom.osdDrawerList.firstElementChild;
+        if (channel) setTvFocus(channel);
+      } else setTvFocus(dom.btnOsdChannels);
+      resetOsdAutoHideTimer();
+    });
+
+    // Track controls stay in the options menu and retain their existing actions.
     dom.btnOsdQuality.addEventListener('click', (e) => {
       e.stopPropagation();
       if (state.player.activePopover === 'quality') {
@@ -2360,9 +2529,21 @@
       }
       resetOsdAutoHideTimer();
     });
-    dom.btnOsdAspect.addEventListener('click', cycleAspectRatio);
+    dom.btnOsdAspect.addEventListener('click', (e) => {
+      e.stopPropagation();
+      cycleAspectRatio();
+    });
     dom.btnOsdHide.addEventListener('click', hidePlayerOsd);
-    dom.btnOsdClose.addEventListener('click', closePlayer);
+    dom.btnOsdClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closePlayer();
+    });
+    if (dom.btnOsdTopExit) {
+      dom.btnOsdTopExit.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePlayer();
+      });
+    }
 
     dom.btnPipExpand.addEventListener('click', expandMiniPipToFullScreen);
     dom.btnPipStop.addEventListener('click', () => {
@@ -2402,7 +2583,14 @@
       }
     });
 
+    // Touch and click handling with ghost click suppression
+    let lastPlayerTouchTime = 0;
+
     dom.playerOverlay.addEventListener('click', (e) => {
+      // Discard synthetic mouse clicks following touch taps to avoid double-toggle
+      if (Date.now() - lastPlayerTouchTime < 500) {
+        return;
+      }
       if (e.target.closest('#mini-pip-bar') || e.target.closest('#pip-controls-box')) {
         return;
       }
@@ -2411,17 +2599,50 @@
         return;
       }
       if (state.player.activePopover) {
-        if (!e.target.closest('#osd-tracks-popover') && !e.target.closest('#btn-osd-quality') && !e.target.closest('#btn-osd-audio') && !e.target.closest('#btn-osd-subs')) {
-          closeTracksPopover(false);
+        if (!e.target.closest('#osd-tracks-popover') && !e.target.closest('#btn-osd-more')) {
+          closeTracksPopover(true);
         }
         return;
       }
-      if (e.target === dom.videoElement) {
-        if (!state.player.osdVisible) {
-          showPlayerOsd(true);
-        } else {
-          hidePlayerOsd();
+      if (e.target.closest('button, .osd-transport-controls, .osd-bottom-sheet, .osd-top-bar, .osd-channel-drawer')) {
+        resetOsdAutoHideTimer();
+        return;
+      }
+      if (!state.player.osdVisible) {
+        showPlayerOsd(true);
+      } else {
+        hidePlayerOsd();
+      }
+    });
+
+    // Touch tap wake up during mobile/tablet touch playback
+    dom.playerOverlay.addEventListener('touchend', (e) => {
+      if (!state.player.active || state.player.miniPipActive || isTouchDragging) return;
+      lastPlayerTouchTime = Date.now();
+
+      if (e.target.closest('#mini-pip-bar') || e.target.closest('#pip-controls-box')) {
+        return;
+      }
+      if (state.player.activePopover) {
+        if (!e.target.closest('#osd-tracks-popover') && !e.target.closest('#btn-osd-more')) {
+          closeTracksPopover(true);
         }
+        return;
+      }
+      // If tapping directly on interactive buttons or inside panels, let button click handle it and keep OSD alive
+      if (e.target.closest('button') || e.target.closest('.osd-bottom-sheet') || e.target.closest('.osd-top-bar') || e.target.closest('.osd-channel-drawer') || e.target.closest('#osd-tracks-popover')) {
+        resetOsdAutoHideTimer();
+        return;
+      }
+
+      // Tapping on empty video space: toggle OSD cleanly
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      if (!state.player.osdVisible) {
+        showPlayerOsd(true);
+      } else {
+        hidePlayerOsd();
       }
     });
   }
@@ -2658,6 +2879,10 @@
   window.handleFireTvBack = handleBackAction;
 
   window.handleFireTvKey = function (keyName) {
+    // Android's bridge may deliver remote keys without a DOM keydown event.
+    if (keyName === 'Enter' || /^Arrow(Up|Down|Left|Right)$/.test(keyName)) {
+      isTouchDragging = false;
+    }
     if (keyName === 'Back') {
       return handleBackAction() ? 'CONSUMED' : 'IGNORED';
     }
@@ -2735,6 +2960,15 @@
       el.focus();
     }
 
+    // The mobile navigation stays on one scrollable line; remote focus must follow it.
+    const navPill = el.closest('.tvos-nav-pill');
+    if (navPill && navPill.scrollWidth > navPill.clientWidth) {
+      const target = el.getBoundingClientRect();
+      const viewport = navPill.getBoundingClientRect();
+      navPill.scrollLeft += target.left - viewport.left - (navPill.clientWidth - target.width) / 2;
+      return;
+    }
+
     // 1. Category Sidebar fast vertical centering
     const catList = el.closest('.category-list');
     if (catList) {
@@ -2750,9 +2984,16 @@
     }
 
     // 2b. OSD Tracks Popover fast vertical centering
-    const popoverList = el.closest('.osd-popover-list');
+    const popoverList = el.closest('.osd-popover-list, .osd-options-list');
     if (popoverList) {
       popoverList.scrollTop = el.offsetTop - (popoverList.clientHeight >> 1) + (el.offsetHeight >> 1);
+      return;
+    }
+
+    // 2c. OSD Controls Row horizontal centering for D-pad navigation
+    const controlsRow = el.closest('.osd-controls-row');
+    if (controlsRow) {
+      controlsRow.scrollLeft = el.offsetLeft - (controlsRow.clientWidth >> 1) + (el.offsetWidth >> 1);
       return;
     }
 
@@ -2966,24 +3207,16 @@
 
     // --- ZONE 5b: OSD Tracks Popover (.osd-tracks-popover) ---
     if (current.closest('.osd-tracks-popover')) {
-      if (direction === 'up') {
-        if (current.previousElementSibling && current.previousElementSibling.classList.contains('osd-popover-item')) {
-          setTvFocus(current.previousElementSibling);
-        } else if (current !== dom.btnOsdPopoverClose) {
-          setTvFocus(dom.btnOsdPopoverClose);
-        }
-        return;
+      const items = getVisibleFocusables();
+      const index = items.indexOf(current);
+      if (direction === 'up' || direction === 'down') {
+        const next = Math.max(0, Math.min(items.length - 1, index + (direction === 'up' ? -1 : 1)));
+        if (items[next]) setTvFocus(items[next]);
+      } else if (direction === 'left') {
+        if (state.player.activePopover !== 'options') openTracksPopover('options', dom.btnOsdMore);
+        else closeTracksPopover(true);
       }
-      if (direction === 'down') {
-        if (current === dom.btnOsdPopoverClose) {
-          const firstItem = dom.osdPopoverList.querySelector('.osd-popover-item');
-          if (firstItem) setTvFocus(firstItem);
-        } else if (current.nextElementSibling && current.nextElementSibling.classList.contains('osd-popover-item')) {
-          setTvFocus(current.nextElementSibling);
-        }
-        return;
-      }
-      if (direction === 'left' || direction === 'right') return;
+      return;
     }
 
     // --- ZONE 5c: Details Modal Top Bar (.details-top-bar) ---
@@ -3012,11 +3245,13 @@
         if (current.nextElementSibling) {
           setTvFocus(current.nextElementSibling);
         } else {
+          setChannelDrawerVisible(false);
           setTvFocus(dom.btnOsdPlayPause);
         }
         return;
       }
       if (direction === 'right') {
+        setChannelDrawerVisible(false);
         setTvFocus(dom.btnOsdPlayPause);
         return;
       }
@@ -3071,7 +3306,7 @@
   function getVisibleFocusables() {
     let scope = document.body;
     if (state.player.active) {
-      scope = dom.playerOverlay;
+      scope = state.player.activePopover ? dom.osdTracksPopover : dom.playerOverlay;
     } else if (state.modal.active) {
       scope = dom.detailsModal;
     } else if (dom.loginScreen.classList.contains('active')) {
@@ -3084,6 +3319,7 @@
     return candidates.filter(el => {
       if (el.disabled) return false;
       if (el.closest('.hidden')) return false;
+      if (state.player.active && getComputedStyle(el).visibility === 'hidden') return false;
       const sec = el.closest('.content-section');
       if (sec && !sec.classList.contains('active')) return false;
       const loginPanel = el.closest('.login-panel');
@@ -3115,6 +3351,14 @@
       }
 
       if (state.player.active) {
+        if (key === 'Tab' && state.player.activePopover) {
+          e.preventDefault();
+          const items = getVisibleFocusables();
+          const index = items.indexOf(document.activeElement);
+          const next = (index + (e.shiftKey ? -1 : 1) + items.length) % items.length;
+          if (items[next]) setTvFocus(items[next]);
+          return;
+        }
         if (key === 'MediaPlayPause' || keyCode === 179) {
           e.preventDefault();
           togglePlayPause();
@@ -3140,6 +3384,10 @@
         } else {
           resetOsdAutoHideTimer();
           const curFocused = document.querySelector('.tv-focused') || document.activeElement;
+          if ((key === 'Enter' || key === ' ') && curFocused === dom.osdProgressWrap) {
+            e.preventDefault();
+            return;
+          }
           if (curFocused === dom.osdProgressWrap && (key === 'ArrowLeft' || key === 'ArrowRight')) {
             e.preventDefault();
             seekRelative(key === 'ArrowRight' ? 15 : -15);

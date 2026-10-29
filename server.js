@@ -6,6 +6,7 @@ const os = require('os');
 const { URL } = require('url');
 
 const PORT = Number(process.env.PORT || 3099);
+const HOST = process.env.HOST || '127.0.0.1';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // Simple in-memory LRU cache for API responses to make navigation instantaneous
@@ -65,7 +66,7 @@ async function resolveStreamUrl(targetUrl) {
       method: 'GET',
       redirect: 'manual',
       headers: {
-        'User-Agent': 'Lavf/60.3.100',
+        'User-Agent': 'KS-TV-Player/1.0',
         'Accept': '*/*'
       },
       signal: controller.signal
@@ -183,7 +184,7 @@ const server = http.createServer(async (req, res) => {
       const timeout = setTimeout(() => controller.abort(), 15000);
       const upstream = await fetch(targetUrl, {
         headers: {
-          'User-Agent': 'IPTVSmartersPro/4.0 (AppleTV; tvOS 18.0)',
+          'User-Agent': 'KS-TV-Player/1.0',
           'Accept': 'application/json, text/plain, */*'
         },
         signal: controller.signal
@@ -228,7 +229,7 @@ const server = http.createServer(async (req, res) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 20000);
       const upstream = await fetch(targetUrl, {
-        headers: { 'User-Agent': 'IPTVSmartersPro/4.0' },
+        headers: { 'User-Agent': 'KS-TV-Player/1.0' },
         signal: controller.signal
       });
       clearTimeout(timeout);
@@ -273,13 +274,13 @@ function getLocalIps() {
   return ips;
 }
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, HOST, () => {
   const ips = getLocalIps();
   console.log('\n============================================================');
   console.log(' KS TV-Stream (Fire TV Stick 4K & Web)');
   console.log('============================================================');
   console.log(` -> No Computador:       http://localhost:${PORT}`);
-  ips.forEach(ip => {
+  if (HOST === '0.0.0.0') ips.forEach(ip => {
     console.log(` -> No Fire TV Stick 4K: http://${ip}:${PORT}`);
   });
   console.log('============================================================\n');

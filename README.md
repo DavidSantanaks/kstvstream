@@ -1,173 +1,63 @@
-# KS TV-Stream — Fire TV Stick 4K, Android TV & Web
+# KS TV Player
 
-<p align="center">
-  <img src="docs/screenshots/preview-home-showcase.svg" alt="KS TV-Stream — Vitrine Apple TV+ (tvOS)" width="100%" />
-</p>
+Reprodutor de mídia para navegador, Fire TV e Android TV. O usuário informa sua própria fonte autorizada via Xtream Codes ou M3U. O projeto não inclui canais, filmes, séries ou assinaturas.
 
-<p align="center">
-  <b>Player de IPTV minimalista inspirado no tvOS (Apple TV)</b><br>
-  Projetado para máxima performance a <b>60 FPS</b> no <b>Amazon Fire TV Stick 4K</b>, <b>Google TV / Android TV</b> e no <b>navegador web</b>.
-</p>
+A interface usa HTML, CSS e JavaScript. No navegador, a reprodução utiliza HTMLVideo/HLS.js; no Android, o catálogo usa WebView e o vídeo usa Media3/ExoPlayer. A identidade visual é KS TV Player, sem vínculo com fornecedores de outros players.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Platform-Fire%20TV%20Stick%20%7C%20Android%20TV%20%7C%20Web-blue?style=flat-square" alt="Plataforma" />
-  <img src="https://img.shields.io/badge/Engine-Media3%20ExoPlayer%20%2B%20HLS.js-success?style=flat-square" alt="Motor" />
-  <img src="https://img.shields.io/badge/Design-Apple%20tvOS%20Liquid%20Glass-black?style=flat-square" alt="Design" />
-  <img src="https://img.shields.io/badge/Performance-60%20FPS%20GPU%20Native-orange?style=flat-square" alt="Performance" />
-  <img src="https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square" alt="Licença" />
-</p>
+## Executar localmente
 
----
+Use Node.js 22 ou superior. Não é necessário instalar pacotes para iniciar:
 
-## 📸 Demonstração da Interface (Simulações 100% Livres de Copyright)
-
-### 1. Vitrine Principal & Destaques em 4K
-Interface inspirada no **Apple TV+ Top Shelf**, com foco dinâmico, proporção cinematográfica `2:3` e badges luminosos automáticos de **4K UHD** e **HDR**.
-
-<p align="center">
-  <img src="docs/screenshots/preview-home-showcase.svg" alt="Vitrine Principal" width="100%" />
-</p>
-
----
-
-### 2. TV ao Vivo — Sidebar de Categorias & Grade de Canais
-Navegação instantânea com **0ms de atraso**, troca sob demanda por categoria (`&category_id`), indicador `AO VIVO`, numeração organizada e anel de foco luminoso Apple TV sem lavar as cores da capa.
-
-<p align="center">
-  <img src="docs/screenshots/preview-live-tv.svg" alt="TV ao Vivo e Canais" width="100%" />
-</p>
-
----
-
-### 3. Player "Clear", Menu de Faixas e Mini Player (PiP)
-Controles completos com menu popover estilo Apple TV+ para seleção de **Resolução** (multi-bitrate HLS e variantes), **Áudio** (Dublado/Legendado/Dual), **Legendas** (embutidas e importação local de `.srt` / `.vtt`), além do **Mini Player flutuante com botão direto de fechar (✕)**.
-
-<p align="center">
-  <img src="docs/screenshots/preview-player-features.svg" alt="Player, Legendas, Áudio e Mini Player" width="100%" />
-</p>
-
----
-
-## ✨ Principais Diferenciais e Funcionalidades
-
-1. **Estética Apple tvOS & Liquid Glass**:
-   - Barra de navegação em cápsula flutuante (`Início`, `TV ao Vivo`, `Filmes`, `Séries`, `Favoritos`, `Busca`, `Conta`).
-   - Motor de foco com aceleração por hardware (60 FPS) e contorno luminoso de 2.5px.
-   - Pôsteres cinematográficos em alta definição com badge **4K** automático para conteúdos UHD/2160p.
-
-2. **Qualidade de Vida (QoL) no Player**:
-   - **Botão `‹ Voltar` no Player**: Permite encolher a TV ao Vivo para o Mini Player ou sair do filme com um clique no navegador ou controle.
-   - **Botão `‹ Voltar` nas Páginas de Séries e Filmes**: Barra superior fixa para retornar instantaneamente à tela anterior sem depender da tecla Esc.
-   - **Menu Popover de Faixas**:
-     - **Resolução**: Alterna entre qualidades (4K, 1080p, 720p, Automática) mantendo o ponto exato da reprodução no VOD.
-     - **Áudio**: Seleção de canais de áudio e versões alternativas (*Dublado*, *Legendado*, *Dual*).
-     - **Legendas**: Exibição de legendas do fluxo, desativação e botão direto para carregar arquivos locais (`.srt` / `.vtt`).
-   - **Mini Player com Fechamento Direto**: Botão `✕` no canto da janela flutuante para encerrar o stream em 1 clique.
-
-3. **Arquitetura Ultra Leve para Listas Gigantes (+75.000 itens)**:
-   - Paginação sob demanda e cache inteligente em memória RAM (sem engasgar a memória do Fire TV Stick).
-   - Busca global ultra-rápida varrendo Canais, Filmes e Séries simultaneamente.
-
-4. **3 Formas de Conexão**:
-   - **Xtream Codes API**: Conexão nativa com Servidor, Usuário e Senha.
-   - **Acesso Rápido**: Conexão direta por DNS/IP.
-   - **Listas M3U / M3U Plus**: Importação direta de URLs M3U ou SSIPTV.
-
----
-
-## 🚀 Como Compilar e Instalar o APK
-
-O arquivo instalador pronto fica disponível em:
-[`dist/KS-TV-Stream.apk`](dist/KS-TV-Stream.apk)
-
-### CI/CD Automático & Criação de Versões (GitHub Actions)
-
-O repositório conta com pipeline automatizado no GitHub Actions:
-
-#### 1. Criar e Publicar uma Versão Oficial via Tag (Automático)
-Basta criar e enviar uma tag com o prefixo `v` pelo terminal:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-O GitHub Actions irá automaticamente:
-1. Sincronizar a interface web com o projeto nativo Android.
-2. Compilar o APK com o Android Gradle Plugin e Media3 ExoPlayer.
-3. Gerar o checksum `SHA-256` para verificação de integridade.
-4. Criar uma **GitHub Release oficial** com notas de lançamento e anexar o `KS-TV-Stream.apk` para download direto.
-
-#### 2. Criar uma Versão Manualmente pela Interface Web do GitHub
-1. No repositório, clique na aba **Actions**.
-2. Selecione o workflow **Build & Release KS TV-Stream APK**.
-3. Clique em **Run workflow**, digite o nome da versão (ex: `v1.0.1`) e confirme.
-
-#### 3. Teste Contínuo (CI a cada commit)
-A cada push ou pull request na branch `main`, o workflow de CI compila o aplicativo e disponibiliza o APK gerado como artefato para download na aba Actions.
-
----
-
-### Compilação Local
-
-#### No Windows (PowerShell)
-
-```powershell
-# 1. Apenas compilar o APK:
-powershell -ExecutionPolicy Bypass -File .\build-and-install-firetv.ps1
-
-# 2. Compilar e instalar direto na TV via Wi-Fi (ADB):
-powershell -ExecutionPolicy Bypass -File .\build-and-install-firetv.ps1 -InstallToFireTv -FireTvIp "SEU_IP_DA_FIRE_TV:5555"
-
-# 3. Compilar e instalar em aparelho conectado via USB:
-powershell -ExecutionPolicy Bypass -File .\build-and-install-firetv.ps1 -InstallToFireTv
-```
-
-### No Linux ou macOS (Bash)
-
-```bash
-# 1. Dar permissão de execução ao script:
-chmod +x ./build-and-install-firetv.sh
-
-# 2. Apenas compilar o APK:
-./build-and-install-firetv.sh
-
-# 3. Compilar e instalar direto na TV via Wi-Fi (ADB):
-./build-and-install-firetv.sh --install --ip "SEU_IP_DA_FIRE_TV:5555"
-
-# 4. Compilar e instalar em aparelho conectado via USB:
-./build-and-install-firetv.sh --install
-```
-
----
-
-## 📺 Compatibilidade com Dispositivos Android
-
-O APK é gerado seguindo as diretrizes oficiais do Google Android e funciona em:
-
-| Plataforma | Dispositivos Compatíveis |
-| :--- | :--- |
-| **Amazon Fire OS** | Fire TV Stick Lite, Fire TV Stick HD, Fire TV Stick 4K, 4K Max e Fire TV Cube. |
-| **Google TV & Android TV** | Chromecast com Google TV (HD e 4K), Xiaomi Mi Box S, Mi TV Stick, Realme 4K Stick, Mecool, Strong. |
-| **Smart TVs Nativas** | Smart TVs TCL, Philips, Sony Bravia, Panasonic, Philco e Semp com Android TV / Google TV. |
-| **TV Boxes Genéricas** | Tanix, TX9, MXQ Pro 4K, Aquário e similares. |
-| **Smartphones e Tablets** | Compatível com Android 5.0 (Lollipop) até Android 14+ com suporte a toque e modo Mini Player. |
-
----
-
-## 🌐 Como Executar no Navegador Web (Local)
-
-Para testar no computador ou navegador da TV sem precisar instalar o APK:
-
-```bash
+```sh
 node server.js
 ```
 
-- **No Computador**: Acesse `http://localhost:3099`
-- **Na TV ou Celular (mesma rede Wi-Fi)**: Acesse o endereço IP local informado no terminal (ex: `http://192.168.x.x:3099`).
+Abra http://localhost:3099. O servidor escuta apenas em loopback por padrão. Para uso consciente na rede local, defina `HOST=0.0.0.0`; o proxy exige proteção adicional antes de qualquer hospedagem pública. Leia [privacidade](PRIVACY.md) e a [auditoria](docs/AUDITORIA_PUBLICACAO.md).
 
----
+## Verificar alterações
 
-## 🛡️ Aviso Legal & Direitos Autorais
+```sh
+node scripts/sync-web-assets.cjs
+npm run check
+npm test
+npm run test:ui
+node scripts/lint-workflows.cjs
+```
 
-Este projeto é um reprodutor de mídia open-source e **não inclui, não hospeda e não distribui** nenhum tipo de lista de reprodução, canal de TV, filme ou série. Todas as imagens e nomes exibidos nas capturas de tela deste repositório são **artes conceituais e conteúdos fictícios simulados**, criados exclusivamente para demonstrar o funcionamento técnico da interface visual sem infringir direitos autorais.
+O teste de interface exige Chrome/Chromium e usa catálogo e mídia fictícios. Defina `QA_BROWSER` se o navegador não estiver em um caminho conhecido. Os relatórios são temporários; `QA_ARTIFACTS_DIR` permite escolher uma pasta. As fontes web em `public/` devem corresponder aos assets Android.
+
+## Android
+
+Configure JDK 17 e Android SDK com plataforma 35 e build-tools 35.0.0. O mínimo declarado é API 24 (Android 7). O suporte real à mídia e às resoluções depende da fonte, dos codecs e do aparelho. Não há garantia de desempenho ou HDR para todo dispositivo.
+
+```sh
+cd android-firetv
+./gradlew :app:assembleDebug :app:lintDebug --warning-mode=fail
+```
+
+No Windows, também é possível usar `build-and-install-firetv.ps1` para gerar o APK de teste. A instalação exige a opção explícita do script. APKs de teste não são uma release para loja e ficam fora do Git.
+
+## CI e release
+
+O CI verifica sintaxe, integridade de assets, prevenção básica de segredos, testes de versão, interface, workflows, compilação Android e lint. As Actions têm commits fixados e runtime Node 24.
+
+O workflow de release valida `vMAJOR.MINOR.PATCH`, aplica `versionName` e `versionCode`, gera checksums e verifica a assinatura do APK. Não aceita APK de debug como alternativa. A publicação manual vem desativada; tags `v*` são o gatilho de publicação de uma release assinada.
+
+Antes de executar a release, o responsável deve configurar os quatro secrets no GitHub:
+
+- `KS_SIGNING_KEYSTORE_BASE64`
+- `KS_SIGNING_STORE_PASSWORD`
+- `KS_SIGNING_KEY_ALIAS`
+- `KS_SIGNING_KEY_PASSWORD`
+
+A chave de produção não é gerada nem versionada por este projeto. Sem esses secrets a release falha explicitamente; o CI de debug continua independente deles. Mudanças de chave ou identificador podem impedir atualizações de instalações anteriores e exigem planejamento.
+
+## Direitos e licenças
+
+A licença aberta do código próprio ainda não foi definida pelo titular. A visibilidade do repositório não concede, por si, uma licença geral de redistribuição desse código. O campo `UNLICENSED` do pacote evita declarar uma licença não escolhida.
+
+Os componentes de terceiros mantêm suas licenças. Consulte [avisos](public/licenses/THIRD_PARTY_NOTICES.txt), [Apache-2.0](public/licenses/APACHE-2.0.txt), [HLS.js](public/licenses/hls.js-LICENSE.txt) e [Gradle](licenses/gradle-LICENSE.txt). As licenças web são incluídas nos assets do APK; metadados de licença das dependências Android são preservados.
+
+Os SVGs em `docs/screenshots` são demonstrações conceituais, não um catálogo de obras disponibilizadas pelo app. Não use capas, cenas, logos, listas ou material de terceiros sem os direitos necessários na divulgação ou distribuição. A logo foi fornecida pelo usuário; o responsável pela publicação deve conservar a comprovação dos direitos sobre a arte e a identidade.
+
+O repositório não inclui fontes SF Pro, um pacote SF Symbols, credenciais de provedor ou documentação que comprove licença para conteúdo audiovisual de terceiros. Veja [AI_MEMORY.md](AI_MEMORY.md) para continuidade técnica e limites de validação.

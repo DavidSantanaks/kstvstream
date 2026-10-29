@@ -1,133 +1,101 @@
-name: Build & Release KS TV-Stream APK
-
+name: Release assinada
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
-        description: 'Versão da Release (ex: v1.0.0)'
-        required: false
-        default: 'v1.0.0'
-      create_release:
-        description: 'Criar GitHub Release oficial?'
-        type: boolean
-        default: true
-      prerelease:
-        description: 'Marcar como Pré-Release (Beta)?'
+        description: 'Versao vMAJOR.MINOR.PATCH'
+        required: true
+        default: v1.0.0
+      publish:
+        description: 'Publicar GitHub Release depois da validacao'
         type: boolean
         default: false
-
+      prerelease:
+        description: 'Marcar como pre-release'
+        type: boolean
+        default: false
 permissions:
-  contents: write
-
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  build-and-release:
-    name: Compilar APK & Publicar Release
-    runs-on: ubuntu-latest
-
+  signed-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
-      - name: Checkout do Repositório
-        uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-
-      - name: Determinar Versão
-        id: versioning
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/}"
-          else
-            VERSION="${{ github.event.inputs.version || 'v1.0.0' }}"
-          fi
-          # Remover 'v' para nome numérico se necessário
-          CLEAN_VERSION="${VERSION#v}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
-          echo "==> Versão definida: $VERSION ($CLEAN_VERSION)"
-
-      - name: Configurar Java 17 (Temurin)
-        uses: actions/setup-java@v4
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Configurar Android SDK e Licenças
-        run: |
-          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
-          echo "$SDK_DIR/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$SDK_DIR/platform-tools" >> $GITHUB_PATH
-          sudo chown -R $(id -u):$(id -g) "$SDK_DIR"
-          SDK_MGR="$SDK_DIR/cmdline-tools/latest/bin/sdkmanager"
-          yes | "$SDK_MGR" --licenses > /dev/null 2>&1 || true
-          "$SDK_MGR" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
-
-      - name: Configurar Cache do Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Sincronizar Interface Web (public -> assets/www)
-        run: |
-          echo "==> Sincronizando interface KS TV-Stream com os assets nativos..."
-          DEST="android-firetv/app/src/main/assets/www"
-          mkdir -p "$DEST"
-          rm -rf "$DEST"/*
-          cp -r public/* "$DEST"/
-          ls -la "$DEST"
-
-      - name: Dar Permissão de Execução ao Gradle Wrapper
-        run: chmod +x android-firetv/gradlew
-
-      - name: Compilar APK de Release (Media3 ExoPlayer)
-        run: |
-          cd android-firetv
-          ./gradlew assembleRelease --no-daemon -PversionName="${{ env.CLEAN_VERSION }}"
-
-      - name: Preparar Artefatos e Gerar Checksum SHA-256
-        run: |
-          mkdir -p dist
-          APK_FOUND=$(find android-firetv/app/build/outputs/apk/release -name "*.apk" | head -n 1)
-          if [ -z "$APK_FOUND" ]; then
-            echo "Aviso: APK de release não encontrado, procurando debug..."
-            APK_FOUND=$(find android-firetv/app/build/outputs/apk -name "*.apk" | head -n 1)
-          fi
-
-          if [ -z "$APK_FOUND" ]; then
-            echo "Erro: Nenhum APK foi gerado!"
-            exit 1
-          fi
-
-          echo "==> APK encontrado: $APK_FOUND"
-          cp "$APK_FOUND" "dist/KS-TV-Stream.apk"
-          cp "$APK_FOUND" "dist/KS-TV-Stream-${{ env.VERSION }}.apk"
-
-          cd dist
-          sha256sum "KS-TV-Stream.apk" > "KS-TV-Stream.apk.sha256"
-          sha256sum "KS-TV-Stream-${{ env.VERSION }}.apk" >> "checksums.txt"
-          cat "KS-TV-Stream.apk.sha256"
-
-      - name: Salvar Artefato na Execução (Workflow Artifact)
-        uses: actions/upload-artifact@v4
-        with:
-          name: KS-TV-Stream-${{ env.VERSION }}
-          path: |
-            dist/KS-TV-Stream.apk
-            dist/KS-TV-Stream-${{ env.VERSION }}.apk
-            dist/KS-TV-Stream.apk.sha256
-          retention-days: 30
-
-      - name: Criar GitHub Release e Anexar APK
-        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.create_release == true
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ env.VERSION }}
-          name: KS TV-Stream ${{ env.VERSION }}
-          prerelease: ${{ github.event.inputs.prerelease || false }}
-          generate_release_notes: true
-          files: |
-            dist/KS-TV-Stream.apk
-            dist/KS-TV-Stream-${{ env.VERSION }}.apk
-            dist/KS-TV-Stream.apk.sha256
+          node-version: '24'
+      - name: Validar versao
+        id: version
+        run: node scripts/release-version.cjs
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          KS_RELEASE_VERSION: ${{ inputs.version }}
+      - run: npm run check && npm test
+      - run: node scripts/lint-workflows.cjs
+      - run: npm run test:ui
+        env:
+          QA_BROWSER: /usr/bin/google-chrome
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - run: node scripts/prepare-android-sdk.cjs
+      - run: node scripts/sync-web-assets.cjs
+      - name: Preparar assinatura privada
+        run: |
+          node -e 'const fs=require("node:fs"); const keys=["KS_SIGNING_KEYSTORE_BASE64","KS_SIGNING_STORE_PASSWORD","KS_SIGNING_KEY_ALIAS","KS_SIGNING_KEY_PASSWORD"]; if(keys.some(k=>!process.env[k])) throw new Error("Configure os quatro secrets KS_SIGNING_* antes de gerar release."); fs.writeFileSync(process.env.RUNNER_TEMP+"/ks-release.jks",Buffer.from(process.env.KS_SIGNING_KEYSTORE_BASE64,"base64"),{mode:0o600});'
+        env:
+          KS_SIGNING_KEYSTORE_BASE64: ${{ secrets.KS_SIGNING_KEYSTORE_BASE64 }}
+          KS_SIGNING_STORE_PASSWORD: ${{ secrets.KS_SIGNING_STORE_PASSWORD }}
+          KS_SIGNING_KEY_ALIAS: ${{ secrets.KS_SIGNING_KEY_ALIAS }}
+          KS_SIGNING_KEY_PASSWORD: ${{ secrets.KS_SIGNING_KEY_PASSWORD }}
+      - name: Compilar release assinada
+        working-directory: android-firetv
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease :app:lintRelease --no-daemon --console=plain --warning-mode=fail -PversionName="$VERSION_NAME" -PversionCode="$VERSION_CODE"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          KS_SIGNING_STORE_FILE: ${{ runner.temp }}/ks-release.jks
+          KS_SIGNING_STORE_PASSWORD: ${{ secrets.KS_SIGNING_STORE_PASSWORD }}
+          KS_SIGNING_KEY_ALIAS: ${{ secrets.KS_SIGNING_KEY_ALIAS }}
+          KS_SIGNING_KEY_PASSWORD: ${{ secrets.KS_SIGNING_KEY_PASSWORD }}
+      - name: Preparar APK e checksums
+        run: node scripts/package-release.cjs
+        env:
+          KS_RELEASE_VERSION: ${{ steps.version.outputs.tag }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: KS-TV-Player-${{ steps.version.outputs.tag }}
+          path: |
+            dist/*.apk
+            dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publicar versao
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.publish
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: KS TV Player ${{ steps.version.outputs.tag }}
+          prerelease: ${{ inputs.prerelease || false }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.apk
+            dist/checksums.txt
+      - name: Remover keystore temporario
+        if: always()
+        run: node -e 'require("node:fs").rmSync(process.env.RUNNER_TEMP+"/ks-release.jks",{force:true});'
