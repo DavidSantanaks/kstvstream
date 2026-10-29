@@ -80,7 +80,37 @@ Controles completos com menu popover estilo Apple TV+ para seleção de **Resolu
 O arquivo instalador pronto fica disponível em:
 [`dist/KS-TV-Stream.apk`](dist/KS-TV-Stream.apk)
 
-### No Windows (PowerShell)
+### CI/CD Automático & Criação de Versões (GitHub Actions)
+
+O repositório conta com pipeline automatizado no GitHub Actions:
+
+#### 1. Criar e Publicar uma Versão Oficial via Tag (Automático)
+Basta criar e enviar uma tag com o prefixo `v` pelo terminal:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+O GitHub Actions irá automaticamente:
+1. Sincronizar a interface web com o projeto nativo Android.
+2. Compilar o APK com o Android Gradle Plugin e Media3 ExoPlayer.
+3. Gerar o checksum `SHA-256` para verificação de integridade.
+4. Criar uma **GitHub Release oficial** com notas de lançamento e anexar o `KS-TV-Stream.apk` para download direto.
+
+#### 2. Criar uma Versão Manualmente pela Interface Web do GitHub
+1. No repositório, clique na aba **Actions**.
+2. Selecione o workflow **Build & Release KS TV-Stream APK**.
+3. Clique em **Run workflow**, digite o nome da versão (ex: `v1.0.1`) e confirme.
+
+#### 3. Teste Contínuo (CI a cada commit)
+A cada push ou pull request na branch `main`, o workflow de CI compila o aplicativo e disponibiliza o APK gerado como artefato para download na aba Actions.
+
+---
+
+### Compilação Local
+
+#### No Windows (PowerShell)
 
 ```powershell
 # 1. Apenas compilar o APK:

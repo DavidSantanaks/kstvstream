@@ -1,0 +1,58 @@
+name: CI — Test & Build APK
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Validar Compilação do APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configurar Cache do Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Sincronizar Interface Web (public -> assets/www)
+        run: |
+          DEST="android-firetv/app/src/main/assets/www"
+          mkdir -p "$DEST"
+          rm -rf "$DEST"/*
+          cp -r public/* "$DEST"/
+
+      - name: Dar Permissão de Execução ao Gradle Wrapper
+        run: chmod +x android-firetv/gradlew
+
+      - name: Compilar APK (assembleDebug)
+        run: |
+          cd android-firetv
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Salvar APK como Artefato da Execução (Disponível por 14 dias)
+        uses: actions/upload-artifact@v4
+        with:
+          name: KS-TV-Stream-nightly-debug
+          path: android-firetv/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14

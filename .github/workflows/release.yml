@@ -1,0 +1,125 @@
+name: Build & Release KS TV-Stream APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão da Release (ex: v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+      create_release:
+        description: 'Criar GitHub Release oficial?'
+        type: boolean
+        default: true
+      prerelease:
+        description: 'Marcar como Pré-Release (Beta)?'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Compilar APK & Publicar Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determinar Versão
+        id: versioning
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="${{ github.event.inputs.version || 'v1.0.0' }}"
+          fi
+          # Remover 'v' para nome numérico se necessário
+          CLEAN_VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
+          echo "==> Versão definida: $VERSION ($CLEAN_VERSION)"
+
+      - name: Configurar Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configurar Cache do Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Sincronizar Interface Web (public -> assets/www)
+        run: |
+          echo "==> Sincronizando interface KS TV-Stream com os assets nativos..."
+          DEST="android-firetv/app/src/main/assets/www"
+          mkdir -p "$DEST"
+          rm -rf "$DEST"/*
+          cp -r public/* "$DEST"/
+          ls -la "$DEST"
+
+      - name: Dar Permissão de Execução ao Gradle Wrapper
+        run: chmod +x android-firetv/gradlew
+
+      - name: Compilar APK de Release (Media3 ExoPlayer)
+        run: |
+          cd android-firetv
+          ./gradlew assembleRelease --no-daemon -PversionName="${{ env.CLEAN_VERSION }}"
+
+      - name: Preparar Artefatos e Gerar Checksum SHA-256
+        run: |
+          mkdir -p dist
+          APK_FOUND=$(find android-firetv/app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_FOUND" ]; then
+            echo "Aviso: APK de release não encontrado, procurando debug..."
+            APK_FOUND=$(find android-firetv/app/build/outputs/apk -name "*.apk" | head -n 1)
+          fi
+
+          if [ -z "$APK_FOUND" ]; then
+            echo "Erro: Nenhum APK foi gerado!"
+            exit 1
+          fi
+
+          echo "==> APK encontrado: $APK_FOUND"
+          cp "$APK_FOUND" "dist/KS-TV-Stream.apk"
+          cp "$APK_FOUND" "dist/KS-TV-Stream-${{ env.VERSION }}.apk"
+
+          cd dist
+          sha256sum "KS-TV-Stream.apk" > "KS-TV-Stream.apk.sha256"
+          sha256sum "KS-TV-Stream-${{ env.VERSION }}.apk" >> "checksums.txt"
+          cat "KS-TV-Stream.apk.sha256"
+
+      - name: Salvar Artefato na Execução (Workflow Artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: KS-TV-Stream-${{ env.VERSION }}
+          path: |
+            dist/KS-TV-Stream.apk
+            dist/KS-TV-Stream-${{ env.VERSION }}.apk
+            dist/KS-TV-Stream.apk.sha256
+          retention-days: 30
+
+      - name: Criar GitHub Release e Anexar APK
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.create_release == true
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.VERSION }}
+          name: KS TV-Stream ${{ env.VERSION }}
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          generate_release_notes: true
+          files: |
+            dist/KS-TV-Stream.apk
+            dist/KS-TV-Stream-${{ env.VERSION }}.apk
+            dist/KS-TV-Stream.apk.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
