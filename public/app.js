@@ -539,17 +539,30 @@
      ======================================================================== */
   function setupLoginEvents() {
     const saved = loadJson(STORAGE_KEYS.SESSION, null);
-    if (saved && saved.server && saved.username) {
-      document.getElementById('xtream-name').value = saved.name || 'KS TV-Stream';
-      document.getElementById('xtream-server').value = saved.server || '';
-      document.getElementById('xtream-user').value = saved.username || '';
-      document.getElementById('xtream-pass').value = saved.password || '';
-      const coreSrv = document.getElementById('core-server');
-      if (coreSrv) coreSrv.value = saved.server || '';
-      document.getElementById('core-user').value = saved.username || '';
-      document.getElementById('core-pass').value = saved.password || '';
-      if (saved.m3uUrl) {
-        document.getElementById('m3u-url').value = saved.m3uUrl;
+    if (saved && saved.server) {
+      if (saved.mode === 'core') {
+        const coreSrv = document.getElementById('core-server');
+        if (coreSrv) coreSrv.value = saved.server || '';
+        const coreUser = document.getElementById('core-user');
+        if (coreUser) coreUser.value = saved.username || '';
+        const corePass = document.getElementById('core-pass');
+        if (corePass) corePass.value = saved.password || '';
+        const coreTab = document.querySelector('.login-tab[data-login-mode="core"]');
+        if (coreTab) coreTab.click();
+      } else if (saved.mode && saved.mode.startsWith('m3u')) {
+        const m3uInput = document.getElementById('m3u-url');
+        if (m3uInput) m3uInput.value = saved.m3uUrl || saved.server || '';
+        const m3uTab = document.querySelector('.login-tab[data-login-mode="m3u"]');
+        if (m3uTab) m3uTab.click();
+      } else {
+        const xName = document.getElementById('xtream-name');
+        if (xName) xName.value = saved.name || 'KS TV-Stream';
+        const xSrv = document.getElementById('xtream-server');
+        if (xSrv) xSrv.value = saved.server || '';
+        const xUser = document.getElementById('xtream-user');
+        if (xUser) xUser.value = saved.username || '';
+        const xPass = document.getElementById('xtream-pass');
+        if (xPass) xPass.value = saved.password || '';
       }
     }
 
@@ -632,6 +645,20 @@
       }
 
       state.session = sessionCandidate;
+
+      // Clear previous cached catalog and history to prevent data collision between different sources
+      state.liveByCat.clear();
+      state.vodByCat.clear();
+      state.seriesByCat.clear();
+      state.vodInfoCache.clear();
+      state.seriesInfoCache.clear();
+      state.epgCache.clear();
+      state.fourKCatIds.clear();
+      state.recent = [];
+      saveJson(STORAGE_KEYS.RECENT, []);
+      dom.homeRows.innerHTML = '';
+      dom.favoritesGrid.innerHTML = '';
+      dom.searchResultsGrid.innerHTML = '';
 
       if (sessionCandidate.mode === 'm3u-custom') {
         await loadCustomM3uPlaylist(sessionCandidate.m3uUrl);
@@ -3236,13 +3263,107 @@
       switchSection('home');
     });
 
-    dom.btnSwitchLogin.addEventListener('click', () => {
-      closePlayer();
-      localStorage.removeItem(STORAGE_KEYS.SESSION);
-      dom.appScreen.classList.remove('active');
-      dom.loginScreen.classList.add('active');
-      setTvFocus(dom.btnLoginSubmit);
+    dom.btnSwitchLogin.addEventListener('click', async () => {
+      await resetApplicationStateAndClearData();
     });
+  }
+
+  async function resetApplicationStateAndClearData() {
+    closePlayer();
+    closeDetailsModal();
+
+    // 1. Reset Session & In-Memory Catalogs
+    state.session = null;
+    state.favorites = [];
+    state.recent = [];
+    state.liveCategories = [];
+    state.vodCategories = [];
+    state.seriesCategories = [];
+    state.fourKCatIds.clear();
+    state.liveByCat.clear();
+    state.vodByCat.clear();
+    state.seriesByCat.clear();
+    state.vodInfoCache.clear();
+    state.seriesInfoCache.clear();
+    state.epgCache.clear();
+    state.currentLiveList = [];
+    state.currentVodList = [];
+    state.currentSeriesList = [];
+    state.heroItem = null;
+
+    // 2. Remove all persistence from LocalStorage
+    localStorage.removeItem(STORAGE_KEYS.SESSION);
+    localStorage.removeItem(STORAGE_KEYS.FAVORITES);
+    localStorage.removeItem(STORAGE_KEYS.RECENT);
+
+    // 3. Purge Proxy In-Memory Cache on Node server
+    if (isLocalServer) {
+      try {
+        await fetch('/api/clear-cache');
+      } catch (_) {}
+    }
+
+    // 4. Wipe clean all input fields across ALL login tabs
+    const xtreamName = document.getElementById('xtream-name');
+    if (xtreamName) xtreamName.value = 'KS TV-Stream';
+    const xtreamServer = document.getElementById('xtream-server');
+    if (xtreamServer) xtreamServer.value = '';
+    const xtreamUser = document.getElementById('xtream-user');
+    if (xtreamUser) xtreamUser.value = '';
+    const xtreamPass = document.getElementById('xtream-pass');
+    if (xtreamPass) xtreamPass.value = '';
+
+    const coreServer = document.getElementById('core-server');
+    if (coreServer) coreServer.value = '';
+    const coreUser = document.getElementById('core-user');
+    if (coreUser) coreUser.value = '';
+    const corePass = document.getElementById('core-pass');
+    if (corePass) corePass.value = '';
+
+    const m3uUrl = document.getElementById('m3u-url');
+    if (m3uUrl) m3uUrl.value = '';
+
+    dom.loginError.classList.add('hidden');
+    dom.loginError.textContent = '';
+
+    // 5. Clear all rendered UI components & grids
+    dom.homeRows.innerHTML = '';
+    dom.liveCategoriesList.innerHTML = '';
+    dom.liveChannelsGrid.innerHTML = '';
+    dom.moviesCategoriesList.innerHTML = '';
+    dom.moviesGrid.innerHTML = '';
+    dom.seriesCategoriesList.innerHTML = '';
+    dom.seriesGrid.innerHTML = '';
+    dom.favoritesGrid.innerHTML = '';
+    dom.searchResultsGrid.innerHTML = '';
+    dom.globalSearchInput.value = '';
+    dom.liveFilterInput.value = '';
+    dom.moviesFilterInput.value = '';
+    dom.seriesFilterInput.value = '';
+    dom.liveCatCount.textContent = '0';
+    dom.moviesCatCount.textContent = '0';
+    dom.seriesCatCount.textContent = '0';
+
+    // 6. Reset Account section labels
+    dom.accProfileName.textContent = 'KS TV-Stream';
+    dom.accServerUrl.textContent = '--';
+    dom.accUsername.textContent = '--';
+    dom.accStatusBadge.textContent = '--';
+    dom.accExpDate.textContent = '--';
+    dom.accConnections.textContent = '--';
+    dom.accountBadge.textContent = 'Desconectado';
+
+    // 7. Transition to Login Screen
+    dom.appScreen.classList.remove('active');
+    dom.loginScreen.classList.add('active');
+
+    const activePanel = document.querySelector('.login-panel.active');
+    const firstInput = activePanel ? activePanel.querySelector('input') : null;
+    if (firstInput) {
+      firstInput.focus();
+    } else {
+      setTvFocus(dom.btnLoginSubmit);
+    }
   }
 
   function init() {

@@ -152,6 +152,12 @@ const server = http.createServer(async (req, res) => {
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const pathname = parsedUrl.pathname;
 
+  // 0. Clear proxy cache when user switches account / source
+  if (pathname === '/api/clear-cache') {
+    apiCache.clear();
+    return sendJson(res, 200, { success: true, message: 'Cache limpo com sucesso' });
+  }
+
   // 1. Proxy Xtream API calls with smart caching
   if (pathname === '/api/xtream') {
     const targetUrl = parsedUrl.searchParams.get('url');

@@ -7,3 +7,4 @@ android-firetv/app/build/
 android-firetv/local.properties
 dist/AppleTV-IPTV-FireTV.apk
 *.log
+.vscode/

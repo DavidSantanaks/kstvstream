@@ -56,3 +56,4 @@ jobs:
           name: KS-TV-Stream-nightly-debug
           path: android-firetv/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 14
+
