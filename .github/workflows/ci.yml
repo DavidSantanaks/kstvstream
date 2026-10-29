@@ -29,8 +29,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Configurar Android SDK e Licenças
+        run: |
+          SDK_DIR="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "$SDK_DIR/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$SDK_DIR/platform-tools" >> $GITHUB_PATH
+          sudo chown -R $(id -u):$(id -g) "$SDK_DIR"
+          SDK_MGR="$SDK_DIR/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDK_MGR" --licenses > /dev/null 2>&1 || true
+          "$SDK_MGR" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Configurar Cache do Gradle
         uses: gradle/actions/setup-gradle@v4
